@@ -4,6 +4,9 @@ import numpy as np
 import os
 import nn_utils.network_utils as network_utils
 import config.nn_config as nn_config
+import tensorflow as tf
+
+sess = tf.Session(config=tf.ConfigProto(log_device_placement=True))
 
 config = nn_config.get_neural_net_configuration()
 inputFile = config['model_file']
@@ -32,18 +35,18 @@ model = network_utils.create_lstm_network(num_frequency_dimensions=freq_space_di
 if os.path.isfile(model_filename):
 	model.load_weights(model_filename)
 
-num_iters = 50 			#Number of iterations for training
+num_iters = 100 			#Number of iterations for training
 epochs_per_iter = 25	#Number of iterations before we save our model
-batch_size = 5			#Number of training examples pushed to the GPU per batch.
+batch_size = 20			#Number of training examples pushed to the GPU per batch.
 						#Larger batch sizes require more memory, but training will be faster
 print ('Starting training!')
 while cur_iter < num_iters:
 	print('Iteration: ' + str(cur_iter))
 	#We set cross-validation to 0,
-	#as cross-validation will be on different datasets 
+	#as cross-validation will be on different datasets
 	#if we reload our model between runs
-	#The moral way to handle this is to manually split 
-	#your data into two sets and run cross-validation after 
+	#The moral way to handle this is to manually split
+	#your data into two sets and run cross-validation after
 	#you've trained the model for some number of epochs
 	history = model.fit(X_train, y_train, batch_size=batch_size, nb_epoch=epochs_per_iter, verbose=1, validation_split=0.0)
 	cur_iter += epochs_per_iter

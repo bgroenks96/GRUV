@@ -12,7 +12,7 @@ config = nn_config.get_neural_net_configuration()
 sample_frequency = config['sampling_frequency']
 inputFile = config['model_file']
 model_basename = config['model_basename']
-cur_iter = 25
+cur_iter = 100
 model_filename = model_basename + str(cur_iter)
 output_filename = './generated_song.wav'
 
