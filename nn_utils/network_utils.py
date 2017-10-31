@@ -10,7 +10,7 @@ def create_lstm_network(num_frequency_dimensions, num_hidden_dimensions, num_rec
 		model.add(LSTM(input_dim=num_hidden_dimensions, output_dim=num_hidden_dimensions, return_sequences=True))
 	#This layer converts hidden space back to frequency space
 	model.add(TimeDistributedDense(input_dim=num_hidden_dimensions, output_dim=num_frequency_dimensions))
-	model.compile(loss='mean_squared_error', optimizer='rmsprop')
+	model.compile(loss='mean_squared_error', optimizer='adadelta')
 	return model
 
 def create_gru_network(num_frequency_dimensions, num_hidden_dimensions, num_recurrent_units=1):

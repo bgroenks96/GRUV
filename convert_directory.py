@@ -1,9 +1,22 @@
 from data_utils.parse_files import *
 import config.nn_config as nn_config
 
+import argparse
+
+parser = argparse.ArgumentParser(description="Convert MP3 files to WAV and prepare training data.")
+parser.add_argument("--dataset", default='train', type=str, help="Dataset to produce.")
+args = parser.parse_args()
+
 config = nn_config.get_neural_net_configuration()
-input_directory = config['dataset_directory']
-output_filename = config['model_file'] 
+
+if args.dataset == 'train':
+    input_directory = config['dataset_directory']
+    output_filename = config['model_file']
+elif args.dataset == 'gen':
+    input_directory = config['gen_directory']
+    output_filename = config['gen_file']
+else:
+    raise('Invalid value for dataset parameter')
 
 freq = config['sampling_frequency'] #sample frequency in Hz
 clip_len = 10 		#length of clips for training. Defined in seconds

@@ -1,4 +1,5 @@
 *.pyc
-datasets/YourMusicLibrary/*
+datasets/*
 run*
+YourMusicLibraryNPWeights*
 
