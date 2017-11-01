@@ -72,7 +72,7 @@ print ('Starting generation!')
 #There are many, many ways we can pick these seed sequences such as taking linear combinations of certain songs
 #We could even provide a uniformly random sequence, but that is highly unlikely to produce good results
 for i in range(gen_count):
-    seed_len = 2
+    seed_len = 1
     seed_seq = seed_generator.generate_copy_seed_sequence(seed_length=seed_len, training_data=X_train)
     output = sequence_generator.generate_from_seed(model=model, seed=seed_seq, sequence_length=max_seq_len, data_variance=X_var, data_mean=X_mean)
     #Save the generated sequence to a WAV file
