@@ -11,7 +11,7 @@ parser = argparse.ArgumentParser(description="Train the GRUV network against the
 parser.add_argument("current_iteration", default=0, type=int, help="Current training iteration to start from.")
 parser.add_argument("num_iterations", default=50, type=int, help="Total number of iterations to perform.")
 parser.add_argument("-e", "--epochs", default=25, type=int, help="Number of epochs per iteration.")
-parser.add_argument("-b", "--batch", default=10, type=int, help="Training batch size. Larger = more memory, but supposedly trains faster.")
+parser.add_argument("-b", "--batch", default=1, type=int, help="Training batch size. Larger = more memory, but supposedly trains faster.")
 args = parser.parse_args()
 
 sess = tf.Session(config=tf.ConfigProto(log_device_placement=True))
@@ -31,11 +31,12 @@ y_train = np.load(inputFile + '_y.npy')
 print ('Finished loading training data')
 
 #Figure out how many frequencies we have in the data
+num_timesteps = X_train.shape[1]
 freq_space_dims = X_train.shape[2]
 hidden_dims = config['hidden_dimension_size']
 
 #Creates a lstm network
-model = network_utils.create_lstm_network(num_frequency_dimensions=freq_space_dims, num_hidden_dimensions=hidden_dims)
+model = network_utils.create_lstm_network(num_timesteps=num_timesteps, num_frequency_dimensions=freq_space_dims, num_hidden_dimensions=hidden_dims)
 #You could also substitute this with a RNN or GRU
 #model = network_utils.create_gru_network()
 
