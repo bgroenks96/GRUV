@@ -50,7 +50,7 @@ epochs_per_iter = args.epochs	                #Number of iterations before we sa
 batch_size = args.batch             			#Number of training examples pushed to the GPU per batch.
                                                 #Larger batch sizes require more memory, but training will be faster
 print ('Starting training!')
-while cur_iter <= num_iters:
+while cur_iter < num_iters:
     print('Iteration: ' + str(cur_iter))
     #We set cross-validation to 0,
     #as cross-validation will be on different datasets
@@ -63,9 +63,10 @@ while cur_iter <= num_iters:
     
     if cur_iter % (epochs_per_iter * 5) != 0 and os.path.isfile(model_basename + str(cur_iter)):
         os.remove(model_basename + str(cur_iter))
+        
+    cur_iter += epochs_per_iter
     
     print ('Saving weights for iteration {0} ...'.format(cur_iter))
     model.save_weights(model_basename + str(cur_iter))
-    cur_iter += epochs_per_iter
     
 print ('Training complete!')
