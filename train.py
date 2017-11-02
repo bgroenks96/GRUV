@@ -34,9 +34,11 @@ print ('Finished loading training data')
 num_timesteps = X_train.shape[1]
 freq_space_dims = X_train.shape[2]
 hidden_dims = config['hidden_dimension_size']
+recurrent_units = config['hidden_recurrent_layers']
 
 #Creates a lstm network
-model = network_utils.create_lstm_network(num_timesteps=num_timesteps, num_frequency_dimensions=freq_space_dims, num_hidden_dimensions=hidden_dims)
+print('Initializing network...')
+model = network_utils.create_lstm_network(num_timesteps=num_timesteps, num_frequency_dimensions=freq_space_dims, num_hidden_dimensions=hidden_dims, num_recurrent_units=recurrent_units)
 #You could also substitute this with a RNN or GRU
 #model = network_utils.create_gru_network()
 
