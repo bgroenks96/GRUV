@@ -101,6 +101,7 @@ def time_blocks_to_fft_blocks(blocks_time_domain):
 def fft_blocks_to_time_blocks(blocks_ft_domain):
 	time_blocks = []
 	for block in blocks_ft_domain:
+        assert block.shape[0] % 2 == 0
 		num_elems = block.shape[0] / 2
 		real_chunk = block[0:num_elems]
 		imag_chunk = block[num_elems:]
@@ -124,6 +125,8 @@ def convert_wav_files_to_nptensor(directory, block_size, max_seq_len, out_file, 
 		print 'Processing: ', (file_idx+1),'/',num_files
 		print 'Filename: ', file
 		X, Y = load_training_example(file, block_size, useTimeDomain=useTimeDomain)
+		assert all(b.shape == (2*block_size,) for b in X)
+		assert len(X) == len(Y)
 		cur_seq = 0
 		total_seq = len(X)
 		print total_seq
@@ -152,6 +155,11 @@ def convert_wav_files_to_nptensor(directory, block_size, max_seq_len, out_file, 
 	x_data[:][:] /= std_x #Variance 1
 	y_data[:][:] -= mean_x #Mean 0
 	y_data[:][:] /= std_x #Variance 1
+	mean_x = np.mean(np.mean(x_data, axis=0), axis=0) #Mean across num examples and num timesteps
+	std_x = np.sqrt(np.mean(np.mean(np.abs(x_data-mean_x)**2, axis=0), axis=0)) # STD across num examples and num timesteps
+	std_x = np.maximum(1.0e-8, std_x) #Clamp variance if too tiny
+    assert np.allclose(mean_x, 0)
+	assert np.allclose(std_x, 1)
 
 	np.save(out_file+'_mean', mean_x)
 	np.save(out_file+'_var', std_x)

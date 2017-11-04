@@ -23,7 +23,7 @@ def generate_from_seed(model, seed, sequence_length, data_variance, data_mean):
         newSeq = np.reshape(newSeq, (1, 1, newSeq.shape[0]))
         seedSeq = np.concatenate((seedSeq, newSeq), axis=1)
         #print(seedSeq.shape)
-        #seedSeq = seedSeq[:,1:,:]
+        seedSeq = seedSeq[:,1:,:]
         #print(seedSeq.shape)
 
     ##Finally, post-process the generated sequence so that we have valid frequencies
