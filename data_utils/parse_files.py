@@ -110,7 +110,7 @@ def fft_blocks_to_time_blocks(blocks_ft_domain):
         time_blocks.append(time_block)
     return time_blocks
 
-def convert_wav_files_to_nptensor(directory, block_size, max_seq_len, out_file, max_files=20, useTimeDomain=False):
+def convert_wav_files_to_nptensor(directory, block_size, max_seq_len, out_file, validation_split=0.0, useTimeDomain=False):
     files = []
     for file in os.listdir(directory):
         if file.endswith('.wav'):
@@ -118,8 +118,6 @@ def convert_wav_files_to_nptensor(directory, block_size, max_seq_len, out_file, 
     chunks_X = []
     chunks_Y = []
     num_files = len(files)
-    if(num_files > max_files):
-        num_files = max_files
     for file_idx in xrange(num_files):
         file = files[file_idx]
         print 'Processing: ', (file_idx+1),'/',num_files
@@ -136,16 +134,35 @@ def convert_wav_files_to_nptensor(directory, block_size, max_seq_len, out_file, 
             chunks_Y.append(Y[cur_seq:cur_seq+max_seq_len])
             cur_seq += max_seq_len
     num_examples = len(chunks_X)
+    num_val = int(round(validation_split*num_examples))
+    num_train = num_examples - num_val
     num_dims_out = block_size * 2
     if(useTimeDomain):
         num_dims_out = block_size
-    out_shape = (num_examples, max_seq_len, num_dims_out)
-    x_data = np.zeros(out_shape)
-    y_data = np.zeros(out_shape)
+    train_shape = (num_train, max_seq_len, num_dims_out)
+    val_shape = (num_val, max_seq_len, num_dims_out)
+    x_data = np.zeros(train_shape)
+    y_data = np.zeros(train_shape)
+    if num_val > 0:
+        val_step = int(round(num_examples / float(num_val)))
+        x_val = np.zeros(val_shape)
+        y_val = np.zeros(val_shape)
+    else:
+        # Don't use validation set
+        val_step = -1
     for n in xrange(num_examples):
         for i in xrange(max_seq_len):
-            x_data[n][i] = chunks_X[n][i]
-            y_data[n][i] = chunks_Y[n][i]
+            if num_val > 0 and n % val_step == 0:
+                idx = n / val_step
+                x_val[idx][i] = chunks_X[n][i]
+                y_val[idx][i] = chunks_Y[n][i]
+                continue
+            elif num_val > 0:
+                idx = n - n / val_step - 1
+            else:
+                idx = n
+            x_data[idx][i] = chunks_X[n][i]
+            y_data[idx][i] = chunks_Y[n][i]
         print 'Saved example ', (n+1), ' / ',num_examples
     print 'Flushing to disk...'
     mean_x = np.mean(np.mean(x_data, axis=0), axis=0) #Mean across num examples and num timesteps
@@ -155,16 +172,23 @@ def convert_wav_files_to_nptensor(directory, block_size, max_seq_len, out_file, 
     x_data[:][:] /= std_x #Variance 1
     y_data[:][:] -= mean_x #Mean 0
     y_data[:][:] /= std_x #Variance 1
-    mean_x = np.mean(np.mean(x_data, axis=0), axis=0) #Mean across num examples and num timesteps
-    std_x = np.sqrt(np.mean(np.mean(np.abs(x_data-mean_x)**2, axis=0), axis=0)) # STD across num examples and num timesteps
-    std_x = np.maximum(1.0e-8, std_x) #Clamp variance if too tiny
-    assert np.allclose(mean_x, 0)
-    assert np.allclose(std_x, 1)
 
     np.save(out_file+'_mean', mean_x)
     np.save(out_file+'_var', std_x)
     np.save(out_file+'_x', x_data)
     np.save(out_file+'_y', y_data)
+    
+    # Center and save validation data, if present
+    if num_val > 0:
+        val_mean_x = np.mean(np.mean(x_val, axis=0), axis=0) #Mean across num examples and num timesteps
+        val_std_x = np.sqrt(np.mean(np.mean(np.abs(x_val-val_mean_x)**2, axis=0), axis=0)) # STD across num examples and num timesteps
+        val_std_x = np.maximum(1.0e-8, val_std_x) #Clamp variance if too tiny
+        x_val[:][:] -= val_mean_x #Mean 0
+        x_val[:][:] /= val_std_x #Variance 1
+        y_val[:][:] -= val_mean_x #Mean 0
+        y_val[:][:] /= val_std_x #Variance 1
+        np.save(out_file+'_val_x', x_val)
+        np.save(out_file+'_val_y', y_val)
     print 'Done!'
 
 def convert_nptensor_to_wav_files(tensor, indices, filename, useTimeDomain=False):

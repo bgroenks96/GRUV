@@ -37,9 +37,7 @@ def generate_from_seed(model, seed, sequence_length, data_variance, data_mean):
         output[i] += data_mean
     return output
     
-    
-    
-    
+
     #print(seedSeq.shape)
     #for it in xrange(sequence_length):
         #seedSeqNew = model.predict(seedSeq) #Step 1. Generate X_n + 1

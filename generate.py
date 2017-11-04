@@ -52,7 +52,8 @@ recurrent_units = config['hidden_recurrent_layers']
 
 #Creates a lstm network
 print('Initializing network...')
-model = network_utils.create_lstm_network(num_timesteps=num_timesteps, num_frequency_dimensions=freq_space_dims, num_hidden_dimensions=hidden_dims, num_recurrent_units=recurrent_units)
+model = network_utils.create_lstm_network(num_frequency_dimensions=freq_space_dims, num_hidden_dimensions=hidden_dims, num_recurrent_units=recurrent_units)
+#model = network_utils.create_noise_network(num_frequency_dimensions=freq_space_dims, num_hidden_dimensions=hidden_dims)
 #You could also substitute this with a RNN or GRU
 #model = network_utils.create_gru_network()
 
