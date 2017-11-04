@@ -168,7 +168,10 @@ def convert_nptensor_to_wav_files(tensor, indices, filename, useTimeDomain=False
 		save_generated_example(filename+str(i)+'.wav', chunks,useTimeDomain=useTimeDomain)
 
 def load_training_example(filename, block_size=2048, useTimeDomain=False):
-	data, bitrate = read_wav_as_np(filename)
+	data, sample_rate = read_wav_as_np(filename)
+	assert sample_rate == 44100
+	assert len(data.shape) == 1
+	
 	x_t = convert_np_audio_to_sample_blocks(data, block_size)
 	y_t = x_t[1:]
 	y_t.append(np.zeros(block_size)) #Add special end block composed of all zeros
@@ -188,10 +191,13 @@ def save_generated_example(filename, generated_sequence, useTimeDomain=False, sa
 	return
 
 def audio_unit_test(filename, filename2):
-	data, bitrate = read_wav_as_np(filename)
+	data, sample_rate = read_wav_as_np(filename)
+	assert sample_rate == 44100
+	assert len(data.shape) == 1
+	
 	time_blocks = convert_np_audio_to_sample_blocks(data, 1024)
 	ft_blocks = time_blocks_to_fft_blocks(time_blocks)
 	time_blocks = fft_blocks_to_time_blocks(ft_blocks)
 	song = convert_sample_blocks_to_np_audio(time_blocks)
-	write_np_as_wav(song, bitrate, filename2)
+	write_np_as_wav(song, sample_rate, filename2)
 	return

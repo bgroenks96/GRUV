@@ -4,6 +4,8 @@ import numpy as np
 def generate_from_seed(model, seed, sequence_length, data_variance, data_mean):
     seedSeq = seed.copy()
     output = []
+    #for i in xrange(seedSeq.shape[1]):
+        #output.append(seedSeq[0][i])
 
     #The generation algorithm is simple:
     #Step 1 - Given A = [X_0, X_1, ... X_n], generate X_n + 1
@@ -24,8 +26,8 @@ def generate_from_seed(model, seed, sequence_length, data_variance, data_mean):
         #seedSeq = seedSeq[:,1:,:]
         #print(seedSeq.shape)
 
-    #Finally, post-process the generated sequence so that we have valid frequencies
-    #We're essentially just undo-ing the data centering process
+    ##Finally, post-process the generated sequence so that we have valid frequencies
+    ##We're essentially just undo-ing the data centering process
     for i in xrange(len(output)):
         output[i] *= data_variance
         output[i] += data_mean
