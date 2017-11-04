@@ -2,6 +2,9 @@ import numpy as np
 
 #Extrapolates from a given seed sequence
 def generate_from_seed(model, seed, sequence_length, data_variance, data_mean):
+    assert seed.shape[0] == 1
+    print "seed.shape[1] = %d" % seed.shape[1]
+    print "seed.shape[2] = %d" % seed.shape[2]
     seedSeq = seed.copy()
     output = []
     #for i in xrange(seedSeq.shape[1]):
@@ -21,9 +24,10 @@ def generate_from_seed(model, seed, sequence_length, data_variance, data_mean):
             output.append(seedSeqNew[0][seedSeqNew.shape[1]-1].copy()) 
         newSeq = seedSeqNew[0][seedSeqNew.shape[1]-1]
         newSeq = np.reshape(newSeq, (1, 1, newSeq.shape[0]))
+        # newSeq += np.random.randn(*newSeq.shape)*0.01
         seedSeq = np.concatenate((seedSeq, newSeq), axis=1)
         #print(seedSeq.shape)
-        seedSeq = seedSeq[:,1:,:]
+        #seedSeq = seedSeq[:,1:,:]
         #print(seedSeq.shape)
 
     ##Finally, post-process the generated sequence so that we have valid frequencies

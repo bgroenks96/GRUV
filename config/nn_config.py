@@ -3,8 +3,8 @@ def get_neural_net_configuration():
 	nn_params['sampling_frequency'] = 44100
 	#Number of hidden dimensions.
 	#For best results, this should be >= freq_space_dims, but most consumer GPUs can't handle large sizes
-	nn_params['hidden_dimension_size'] = 1024
-	nn_params['hidden_recurrent_layers'] = 1
+	nn_params['hidden_dimension_size'] = 2048
+	nn_params['hidden_recurrent_layers'] = 2
 	#The weights filename for saving/loading trained models
 	nn_params['model_basename'] = './YourMusicLibraryNPWeights'
 	#The model filename for the training data
