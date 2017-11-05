@@ -50,6 +50,9 @@ model = network_utils.create_lstm_network(num_frequency_dimensions=freq_space_di
 #You could also substitute this with a RNN or GRU
 #model = network_utils.create_gru_network()
 
+print('Model summary:')
+model.summary()
+
 #Load existing weights if available
 if os.path.isfile(model_filename):
     print ('Loading existing weight data from {}'.format(model_filename))

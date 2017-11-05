@@ -2,4 +2,6 @@
 datasets/*
 run*
 YourMusicLibraryNPWeights*
+loss_metrics*
+generated_song*
 
