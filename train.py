@@ -97,10 +97,10 @@ while cur_iter < num_iters:
     history = model.fit(X_train, y_train, batch_size=batch_size, epochs=epochs_per_iter, shuffle=True, verbose=1, validation_data=val_data)
     save_metrics = history.history
     
-    if curr_iter - last_interval < args.interval and os.path.isfile(model_basename + str(cur_iter)):
+    if cur_iter - last_interval < args.interval and os.path.isfile(model_basename + str(cur_iter)):
         os.remove(model_basename + str(cur_iter))
     else:
-        last_interval = curr_iter
+        last_interval = cur_iter
         
     cur_iter += epochs_per_iter
     
