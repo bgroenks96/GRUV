@@ -14,6 +14,8 @@ parser.add_argument("-e", "--epochs", default=25, type=int, help="Number of epoc
 parser.add_argument("-b", "--batch", default=None, type=int, help="Number of training examples per gradient update. Defaults to None which will attempt to load all examples in one batch.")
 parser.add_argument("-v", "--validation", default=True, type=bool, help="Use cross validation data.")
 parser.add_argument("-n", "--interval", default=5, type=int, help="Number of iterations to run in between retaining saved weights.")
+parser.add_argument("-o", "--optimizer", default="rmsprop", type=str, help="Name of the optimizer to use for the generative model. Defaults to 'rmsprop'")
+parser.add_argument("-d", "--dropout", default=0.3, type=float, help="Probability of dropout applied to the first layer of the generative network.")
 args = parser.parse_args()
 
 sess = tf.Session(config=tf.ConfigProto(log_device_placement=True))
@@ -44,7 +46,7 @@ recurrent_units = config['hidden_recurrent_layers']
 
 #Creates a lstm network
 print('Initializing network...')
-model = network_utils.create_lstm_network(num_frequency_dimensions=freq_space_dims, num_hidden_dimensions=hidden_dims, num_recurrent_units=recurrent_units)
+model = network_utils.create_lstm_network(num_frequency_dimensions=freq_space_dims, num_hidden_dimensions=hidden_dims, num_recurrent_units=recurrent_units, optimizer=args.optimizer, dropout_rate=args.dropout)
 #You could also substitute this with a RNN or GRU
 #model = network_utils.create_gru_network()
 

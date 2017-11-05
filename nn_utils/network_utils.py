@@ -2,16 +2,16 @@ from keras.models import Sequential
 from keras.layers import *
 import numpy as np
 
-def create_lstm_network(num_frequency_dimensions, num_hidden_dimensions, num_recurrent_units=1):
+def create_lstm_network(num_frequency_dimensions, num_hidden_dimensions, num_recurrent_units=1, optimizer='rmsprop', dropout_rate=0.3):
     model = Sequential()
     #This layer converts frequency space to hidden space
     model.add(TimeDistributed(Dense(num_hidden_dimensions), input_shape=(None, num_frequency_dimensions)))
-    model.add(GaussianDropout(0.3))
+    model.add(GaussianDropout(dropout_rate))
     for cur_unit in xrange(num_recurrent_units):
         model.add(LSTM(units=num_hidden_dimensions, return_sequences=True))
     #This layer converts hidden space back to frequency space
     model.add(TimeDistributed(Dense(num_frequency_dimensions)))
-    model.compile(loss='mean_squared_error', optimizer='rmsprop')
+    model.compile(loss='mean_squared_error', optimizer=optimizer)
     return model
 
 #def create_gru_network(num_frequency_dimensions, num_hidden_dimensions, num_recurrent_units=1):
