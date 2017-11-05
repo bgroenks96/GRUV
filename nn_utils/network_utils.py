@@ -6,9 +6,9 @@ def create_lstm_network(num_frequency_dimensions, num_hidden_dimensions, num_rec
     model = Sequential()
     #This layer converts frequency space to hidden space
     model.add(TimeDistributed(Dense(num_hidden_dimensions), input_shape=(None, num_frequency_dimensions)))
-    model.add(GaussianDropout(0.1))
+    model.add(GaussianDropout(0.2))
     for cur_unit in xrange(num_recurrent_units):
-        model.add(LSTM(units=num_hidden_dimensions, return_sequences=True))
+        model.add(LSTM(units=num_hidden_dimensions, return_sequences=True, stateful=True))
     #This layer converts hidden space back to frequency space
     model.add(TimeDistributed(Dense(num_frequency_dimensions)))
     model.compile(loss='mean_squared_error', optimizer='rmsprop')

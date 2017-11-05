@@ -13,6 +13,7 @@ parser.add_argument("num_iterations", default=50, type=int, help="Total number o
 parser.add_argument("-e", "--epochs", default=25, type=int, help="Number of epochs per iteration.")
 parser.add_argument("-b", "--batch", default=None, type=int, help="Number of training examples per gradient update. Defaults to None which will attempt to load all examples in one batch.")
 parser.add_argument("-v", "--validation", default=True, type=bool, help="Use cross validation data.")
+parser.add_argument("-n", "--interval", default=5, type=int, help="Number of iterations to run in between retaining saved weights.")
 args = parser.parse_args()
 
 sess = tf.Session(config=tf.ConfigProto(log_device_placement=True))
@@ -84,22 +85,22 @@ else:
 #y_val = data_parts[3]
 
 print('Training set shape: {0}'.format(X_train.shape))
+val_data = None
 if use_validation:
     print('Validation set shape: {0}'.format(X_val.shape))
+    val_data = (X_val, y_val)
 
 print ('Starting training!')
+last_interval = 0
 while cur_iter < num_iters:
     print('Iteration: ' + str(cur_iter))
-    history = model.fit(X_train, y_train, batch_size=batch_size, epochs=epochs_per_iter, shuffle=True, verbose=1, validation_split=0.0).history
-    save_metrics = {'train_losses' : history['loss']}
+    history = model.fit(X_train, y_train, batch_size=batch_size, epochs=epochs_per_iter, shuffle=True, verbose=1, validation_data=val_data)
+    save_metrics = history.history
     
-    if use_validation:
-        val_loss = model.evaluate(X_val, y_val, verbose=1)
-        save_metrics = {'val_loss' : val_loss}
-        print('validation loss: %f' % val_loss)
-    
-    if cur_iter % (epochs_per_iter * 5) != 0 and os.path.isfile(model_basename + str(cur_iter)):
+    if curr_iter - last_interval < args.interval and os.path.isfile(model_basename + str(cur_iter)):
         os.remove(model_basename + str(cur_iter))
+    else:
+        last_interval = curr_iter
         
     cur_iter += epochs_per_iter
     

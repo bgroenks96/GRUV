@@ -132,7 +132,7 @@ def convert_wav_files_to_nptensor(directory, block_size, max_seq_len, out_file, 
         while cur_seq + max_seq_len < total_seq:
             chunks_X.append(X[cur_seq:cur_seq+max_seq_len])
             chunks_Y.append(Y[cur_seq:cur_seq+max_seq_len])
-            cur_seq += max_seq_len
+            cur_seq += max_seq_len / 2  # Duplicate part of each clip to try and include more time-distributed information about each song.
     num_examples = len(chunks_X)
     num_val = int(round(validation_split*num_examples))
     num_train = num_examples - num_val
