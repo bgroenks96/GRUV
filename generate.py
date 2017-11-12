@@ -9,11 +9,30 @@ from data_utils.parse_files import *
 import config.nn_config as nn_config
 import argparse
 
+def generate(model, X_train, X_var, X_mean, max_seq_len, seed_len=1, gen_count=1, include_seed_in_output=True):
+    print ('Starting generation!')
+    #Here's the interesting part
+    #We need to create some seed sequence for the algorithm to start with
+    #Currently, we just grab an existing seed sequence from our training data and use that
+    #However, this will generally produce verbatum copies of the original songs
+    #In a sense, choosing good seed sequences = how you get interesting compositions
+    #There are many, many ways we can pick these seed sequences such as taking linear combinations of certain songs
+    #We could even provide a uniformly random sequence, but that is highly unlikely to produce good results
+    outputs = []
+    for i in range(gen_count):
+        seed_seq = seed_generator.generate_copy_seed_sequence(seed_length=seed_len, training_data=X_train)
+        output = sequence_generator.generate_from_seed(model=model, seed=seed_seq, sequence_length=max_seq_len, data_variance=X_var, data_mean=X_mean, include_seed_in_output=include_seed_in_output)
+        outputs.append(output)
+    return outputs
+    
+print ('Finished generation!')
+
 parser = argparse.ArgumentParser(description="Generate song from current saved training data.")
 parser.add_argument("--batch", default=1, type=int, help="Number of generations to run.")
 parser.add_argument("--iteration", default=0, type=int, help="Current training iteration load weights for.")
 parser.add_argument("--seqlen", default=10, type=int, help="Sequence length.")
 parser.add_argument("--use-train", action='store_true', help='True if training data should be sampled to seed generation. Defaults to false (use generation data).')
+parser.add_argument("--include-seed", action='store_true', help="True if the generated audio should include the model's prediction output for the seed samples.")
 args = parser.parse_args()
 
 config = nn_config.get_neural_net_configuration()
@@ -26,8 +45,7 @@ model_basename = config['model_basename']
 cur_iter = args.iteration
 gen_count = args.batch
 model_filename = model_basename + str(cur_iter)
-output_filename = './generated_song'
-output_file_ext = '.wav'
+output_filename = './generated_song.wav'
 
 #Load up the training data
 if args.use_train:
@@ -68,19 +86,8 @@ else:
 	print('Model filename ' + model_filename + ' could not be found!')
 
 max_seq_len = args.seqlen; #Defines how long the final song is. Total song length in samples = max_seq_len * example_len
-print ('Starting generation!')
-#Here's the interesting part
-#We need to create some seed sequence for the algorithm to start with
-#Currently, we just grab an existing seed sequence from our training data and use that
-#However, this will generally produce verbatum copies of the original songs
-#In a sense, choosing good seed sequences = how you get interesting compositions
-#There are many, many ways we can pick these seed sequences such as taking linear combinations of certain songs
-#We could even provide a uniformly random sequence, but that is highly unlikely to produce good results
-for i in range(gen_count):
-    seed_len = 1
-    seed_seq = seed_generator.generate_copy_seed_sequence(seed_length=seed_len, training_data=X_train)
-    output = sequence_generator.generate_from_seed(model=model, seed=seed_seq, sequence_length=max_seq_len, data_variance=X_var, data_mean=X_mean)
+
+outputs = generate(model, X_train, X_var, X_mean, max_seq_len, gen_count=gen_count, include_seed_in_output=args.include_seed)
+for i in xrange(gen_count):
     #Save the generated sequence to a WAV file
-    save_generated_example('{0}_{1}{2}'.format(output_filename, i, output_file_ext), output, sample_frequency=sample_frequency)
-    
-print ('Finished generation!')
+    save_generated_example('{0}_{1}'.format(output_filename, i), outputs[i], sample_frequency=sample_frequency)

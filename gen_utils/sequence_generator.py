@@ -1,7 +1,7 @@
 import numpy as np
 
 #Extrapolates from a given seed sequence
-def generate_from_seed(model, seed, sequence_length, data_variance, data_mean):
+def generate_from_seed(model, seed, sequence_length, data_variance, data_mean, include_seed_in_output=True):
     assert seed.shape[0] == 1
     print "seed.shape[1] = %d" % seed.shape[1]
     print "seed.shape[2] = %d" % seed.shape[2]
@@ -17,7 +17,7 @@ def generate_from_seed(model, seed, sequence_length, data_variance, data_mean):
     for it in xrange(sequence_length):
         seedSeqNew = model.predict(seedSeq) #Step 1. Generate X_n + 1
         #Step 2. Append it to the sequence
-        if it == 0:
+        if it == 0 and include_seed_in_output:
             for i in xrange(seedSeqNew.shape[1]):
                 output.append(seedSeqNew[0][i].copy())
         else:
