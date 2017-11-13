@@ -143,7 +143,7 @@ if cur_iter > 0:
 num_iters = cur_iter + args.num_iterations
 while cur_iter < num_iters:
     # Start training iteration for each model
-    print('Iteration: {0}')
+    print('Iteration: {0}'.format(cur_iter))
     print('Training generator for {0} epochs (batch size: {1})'.format(args.gen_epochs, batch_size))
     gen_hist = gan.fit_generator(X_train, y_train, batch_size=batch_size, epochs=args.gen_epochs, shuffle=True, verbose=1, validation_data=val_data)
     print('Saving generator weights for iteration {0} ...'.format(cur_iter))
