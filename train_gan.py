@@ -12,6 +12,7 @@ import argparse
 
 # Default maximum batch size for 'auto' batching
 MAX_AUTO_BATCH_SIZE = 500
+MAX_DECODER_EXAMPLES = 100
 
 config = nn_config.get_neural_net_configuration()
 
@@ -135,7 +136,7 @@ def train_decoder(X_train, sample_size):
     
 # Training phase 1: Generator pre-training
 print('Starting training...')
-decoder_sample_size = X_train.shape[0] / 2
+decoder_data_len = min(MAX_DECODER_EXAMPLES, X_train.shape[0] / 2)
 # If we're not starting at zero, then bump current iteration up one, assuming we've loaded weights for the starting iteration
 if cur_iter > 0:
     cur_iter += 1
@@ -147,8 +148,8 @@ while cur_iter < num_iters:
     gen_hist = gan.fit_generator(X_train, y_train, batch_size=batch_size, epochs=args.gen_epochs, shuffle=True, verbose=1, validation_data=val_data)
     print('Saving generator weights for iteration {0} ...'.format(cur_iter))
     gan.generator.save_weights(gen_basename + str(cur_iter))
-    print('Training decoder for {0} epochs'.format(args.dec_epochs))
-    dec_hist = train_decoder(X_train, decoder_sample_size)
+    print('Training decoder for {0} epochs with {1} training examples'.format(args.dec_epochs, decoder_data_len))
+    dec_hist = train_decoder(X_train, decoder_data_len)
     print('Saving decoder weights for iteration {0} ...'.format(cur_iter))
     gan.decoder.save_weights(dec_basename + str(cur_iter))
     print('Training combined model for {0} epochs'.format(args.com_epochs))
