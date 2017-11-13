@@ -27,8 +27,8 @@ parser.add_argument("--skip-validation", action="store_true", help="Do not use c
 parser.add_argument("-n", "--interval", default=10, type=int, help="Number of iterations to run in between retaining saved weights.")
 parser.add_argument("-o", "--optimizer", default="rmsprop", type=str, help="Name of the optimizer to use for the generative model. Defaults to 'rmsprop'")
 parser.add_argument("-d", "--dropout", default=0.3, type=float, help="Probability of dropout applied to the first layer of the generative network.")
-parser.add_argument("--hidden-dims", default=config['hidden_dimension_size'], type=float, help="Number of hidden layer dimensions.")
-parser.add_argument("--hidden-layers", default=config['hidden_recurrent_layers'], type=float, help="Number of hidden layers (generator only).")
+parser.add_argument("--hidden-dims", default=config['hidden_dimension_size'], type=int, help="Number of hidden layer dimensions.")
+parser.add_argument("--hidden-layers", default=config['hidden_recurrent_layers'], type=int, help="Number of hidden layers (generator only).")
 args = parser.parse_args()
 
 sess = tf.Session(config=tf.ConfigProto(log_device_placement=True))
