@@ -11,7 +11,6 @@ import tensorflow as tf
 import argparse
 
 # Default maximum batch size for 'auto' batching
-MAX_AUTO_BATCH_SIZE = 500
 MAX_DECODER_EXAMPLES = 100
 
 config = nn_config.get_neural_net_configuration()
@@ -22,7 +21,7 @@ parser.add_argument("num_iterations", default=10, type=int, help='Number of trai
 parser.add_argument("--dec-epochs", default=50, type=int, help="Number of epochs per iteration to train the decoder.")
 parser.add_argument("--gen-epochs", default=25, type=int, help="Number of epochs per iteration of the generator.")
 parser.add_argument("--com-epochs", default=1, type=int, help="Number of epochs per iteration to train the combined GAN model.")
-parser.add_argument("-b", "--batch", default='auto', type=str, help="Number of training examples per gradient update. Valid values are: 'auto' - try to find reasonable batch size given the training data size, 'None' - batch entire dataset, or a literal numerical value")
+parser.add_argument("-b", "--max-batch", default=500, type=int, help="Maximum number of training examples to batch per gradient update.")
 parser.add_argument("--skip-validation", action="store_true", help="Do not use cross validation data.")
 parser.add_argument("-n", "--interval", default=10, type=int, help="Number of iterations to run in between retaining saved weights.")
 parser.add_argument("-o", "--optimizer", default="rmsprop", type=str, help="Name of the optimizer to use for the generative model. Defaults to 'rmsprop'")
@@ -78,14 +77,9 @@ if os.path.isfile(gen_filename):
     print('Loading existing weight data (Generator) from {}'.format(gen_filename))
     gan.generator.load_weights(gen_filename)
 
-if args.batch == None:                          #Number of training examples per gradient update
-    batch_size = X_train.shape[0]
-elif args.batch == 'auto':
-    batch_size = X_train.shape[0]
-    while batch_size > MAX_AUTO_BATCH_SIZE:
-        batch_size /= 2
-else:
-    batch_size = int(args.batch)
+batch_size = X_train.shape[0]
+while batch_size > args.max_batch:
+    batch_size = int(np.ceil(batch_size / 2.0))
 
 # Deprecated, dynamic validation splitting. Incurs a lot of additional computational overhead per training recurrent_units
 # ...
