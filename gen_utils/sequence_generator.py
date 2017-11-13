@@ -1,10 +1,10 @@
 import numpy as np
 
 #Extrapolates from a given seed sequence
-def generate_from_seed(model, seed, sequence_length, data_variance, data_mean, include_seed_in_output=True):
+def generate_from_seed(model, seed, sequence_length, include_seed_in_output=True, uncenter_data=False, data_variance=[], data_mean=[]):
     assert seed.shape[0] == 1
-    print "seed.shape[1] = %d" % seed.shape[1]
-    print "seed.shape[2] = %d" % seed.shape[2]
+    #print "seed.shape[1] = %d" % seed.shape[1]
+    #print "seed.shape[2] = %d" % seed.shape[2]
     seedSeq = seed.copy()
     output = []
     #for i in xrange(seedSeq.shape[1]):
@@ -18,6 +18,9 @@ def generate_from_seed(model, seed, sequence_length, data_variance, data_mean, i
         seedSeqNew = model.predict(seedSeq) #Step 1. Generate X_n + 1
         #Step 2. Append it to the sequence
         if it == 0 and include_seed_in_output:
+            # Zero pad beginning so that our final generated sequence is of length:
+            # seed.shape[1] + sequence_length
+            output.append(np.zeros(seedSeqNew.shape[-1]))
             for i in xrange(seedSeqNew.shape[1]):
                 output.append(seedSeqNew[0][i].copy())
         else:
@@ -30,11 +33,15 @@ def generate_from_seed(model, seed, sequence_length, data_variance, data_mean, i
         #seedSeq = seedSeq[:,1:,:]
         #print(seedSeq.shape)
 
-    ##Finally, post-process the generated sequence so that we have valid frequencies
-    ##We're essentially just undo-ing the data centering process
-    for i in xrange(len(output)):
-        output[i] *= data_variance
-        output[i] += data_mean
+    if uncenter_data:
+        assert len(data_variance) > 0
+        assert len(data_mean) > 0
+        ##Finally, post-process the generated sequence so that we have valid frequencies
+        ##We're essentially just undo-ing the data centering process
+        for i in xrange(len(output)):
+            output[i] *= data_variance
+            output[i] += data_mean
+            
     return output
     
 

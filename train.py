@@ -11,7 +11,7 @@ parser = argparse.ArgumentParser(description="Train the NuGRUV generator network
 parser.add_argument("current_iteration", default=0, type=int, help="Current training iteration to start from.")
 parser.add_argument("-i", "--iterations", default=50, type=int, help="Total number of iterations to perform.")
 parser.add_argument("-e", "--epochs", default=25, type=int, help="Number of epochs per iteration.")
-parser.add_argument("-b", "--batch", default=None, type=int, help="Number of training examples per gradient update. Defaults to None which will attempt to load all examples in one batch.")
+parser.add_argument("-b", "--batch", default='auto', type=str, help="Number of training examples per gradient update. Valid values are: 'auto' - try to find reasonable batch size given the training data size, 'None' - batch entire dataset, or a literal numerical value")
 parser.add_argument("-v", "--validation", default=True, type=bool, help="Use cross validation data.")
 parser.add_argument("-n", "--interval", default=5, type=int, help="Number of iterations to run in between retaining saved weights.")
 parser.add_argument("-o", "--optimizer", default="rmsprop", type=str, help="Name of the optimizer to use for the generative model. Defaults to 'rmsprop'")
@@ -62,9 +62,15 @@ num_iters = cur_iter + args.num_iterations 		#Number of iterations for training
 epochs_per_iter = args.epochs	                #Number of iterations before we save our model
 if args.batch == None:                          #Number of training examples per gradient update
     batch_size = X_train.shape[0]
+elif args.batch == 'auto':
+    batch_size = X_train.shape[0]
+    while batch_size > MAX_AUTO_BATCH_SIZE:
+        batch_size /= 2
 else:
-    batch_size = args.batch
+    batch_size = int(args.batch)
 
+# Deprecated, dynamic validation splitting. Incurs a lot of additional computational overhead per training recurrent_units
+# ...
 #def prepare_validation_split(x_train, y_train, x_val, y_val, validate_size):
     #if validate_size == 0:
         #return x_train, y_train, x_val, y_val

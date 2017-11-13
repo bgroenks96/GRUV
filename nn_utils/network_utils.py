@@ -35,34 +35,56 @@ def create_noise_network(num_frequency_dimensions, num_hidden_dimensions):
 def create_gan(num_frequency_dimensions, num_hidden_dimensions, num_recurrent_units=1, optimizer='adam', dropout_rate=0.3):
     # Create generator network
     generator = create_lstm_network(num_frequency_dimensions, num_hidden_dimensions, num_recurrent_units=num_recurrent_units, optimizer=optimizer, dropout_rate=dropout_rate)
-    # Create discriminator network
-    discriminator = Sequential()
-    discriminator.add(TimeDistributed(Dense(num_hidden_dimensions), input_shape=(None, num_frequency_dimensions)))
-    discriminator.add(GaussianDropout(0.1))
-    discriminator.add(Dense(num_hidden_dimensions, activation='tanh'))
-    discriminator.add(Dense(num_hidden_dimensions, activation='tanh'))
-    discriminator.add(TimeDistributed(Dense(num_frequency_dimensions)))
-    discriminator.compile(loss='mean_squared_error', optimizer=optimizer)
+    # Create decoder (or "discriminator") network
+    decoder = Sequential()
+    decoder.add(TimeDistributed(Dense(num_hidden_dimensions, activation='tanh'), input_shape=(None, num_frequency_dimensions)))
+    decoder.add(Dense(num_hidden_dimensions, activation='tanh'))
+    decoder.add(Dense(num_hidden_dimensions, activation='tanh'))
+    decoder.add(Dense(1, activation='sigmoid'))
+    decoder.compile(loss='binary_crossentropy', optimizer=optimizer, metrics=['accuracy'])
     # Create GAN (combined model)
-    return GAN(generator, discriminator)
+    return GAN(generator, decoder, optimizer)
 
 class GAN:
-    def __init__(self, generator, discriminator):
+    def __init__(self, generator, decoder, optimizer):
         model = Sequential()
         model.add(generator)
-        discriminator.trainable = False
-        model.add(discriminator)
-        model.compile(loss='mean_squared_error', optimizer=optimizer)
+        decoder.trainable = False
+        model.add(decoder)
+        model.compile(loss='binary_crossentropy', optimizer=optimizer, metrics=['accuracy'])
+        decoder.trainable = True
         self.generator = generator
-        self.discriminator = discriminator
+        self.decoder = decoder
         self.model = model
+    
+    # Fit the generator network against the given training data
+    def fit_generator(self, X_train, y_train, batch_size=None, epochs=10, shuffle=False, verbose=1, validation_data=None):
+        return self.generator.fit(X_train, y_train, batch_size=batch_size, epochs=epochs, shuffle=shuffle, verbose=verbose, validation_data=validation_data)
+    
+    # Fit the decoder network against the given real and fake X examples. An example output of '1' will be generated for each real example, and '0' for each fake one.
+    def fit_decoder(self, X_real, X_fake, batch_size=None, epochs=10, shuffle=False, verbose=1, validation_split=0.0):
+        num_real = X_real.shape[0]
+        num_fake = X_fake.shape[0]
+        X_train = np.concatenate((X_real, X_fake), axis=0)
+        y_train = np.concatenate((np.ones((num_real, X_train.shape[1], 1)), np.zeros((num_fake, X_train.shape[1], 1))), axis=0)
+        return self.decoder.fit(X_train, y_train, batch_size=batch_size, epochs=epochs, shuffle=shuffle, verbose=verbose, validation_split=validation_split)
+    
+    def fit(self, X_train, batch_size=None, epochs=10, shuffle=False, verbose=1, validation_split=0.0):
+        num_examples = X_train.shape[0]
+        num_timesteps = X_train.shape[1]
+        y_train = np.ones((num_examples, num_timesteps, 1))
+        self.decoder.trinable = False
+        hist = self.model.fit(X_train, y_train, batch_size=batch_size, epochs=epochs, shuffle=shuffle, verbose=verbose, validation_split=validation_split)
+        self.decoder.trainable = True
+        return hist
+    
+    def summary(self):
+        print('==== Generator ====')
+        self.generator.summary()
+        print('==== Decoder ====')
+        self.decoder.summary()
+        print('==== Combined (GAN) ====')
+        self.decoder.trainable = False
+        self.model.summary()
+        self.decoder.trainable = True
         
-    def fit_generator(self, X_train, y_train, batch_size, epochs, shuffle=False, verbose=1, val_data=None):
-        return self.generator.fit(X_train, y_train, batch_size=batch_size, epochs=epochs, shuffle=shuffle, verbose=verbose, validation_data=val_data)
-    
-    def fit_discriminator(self, X_train, y_train, batch_size, epochs, shuffle=False, verbose=1, val_data=None):
-        return self.discriminator.fit(X_train, y_train, batch_size=batch_size, epochs=epochs, shuffle=shuffle, verbose=verbose, validation_data=val_data)
-    
-    def fit(self, X_train, y_train, batch_size, epochs, shuffle=False, verbose=1, val_data=None):
-        return self.model.fit(X_train, y_train, batch_size=batch_size, epochs=epochs, shuffle=shuffle, verbose=verbose, validation_data=val_data)
-    

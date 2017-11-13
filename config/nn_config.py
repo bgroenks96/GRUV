@@ -6,7 +6,7 @@ def get_neural_net_configuration():
 	nn_params['hidden_dimension_size'] = 1024
 	nn_params['hidden_recurrent_layers'] = 2
 	#The weights filename for saving/loading trained models
-	nn_params['model_basename'] = './YourMusicLibraryNPWeights'
+	nn_params['model_basename'] = './NuGruvModelWeights'
 	#The model filename for the training data
 	nn_params['model_file'] = './datasets/train/YourMusicLibraryNP'
 	#The training data directory
