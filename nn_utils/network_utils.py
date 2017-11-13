@@ -52,7 +52,7 @@ class GAN:
         model.add(generator)
         decoder.trainable = False
         model.add(decoder)
-        model.compile(loss='binary_crossentropy', optimizer=optimizers.RMSprop(lr=0.0001, decay=0.5), metrics=['accuracy'])
+        model.compile(loss='binary_crossentropy', optimizer=optimizers.RMSprop(lr=0.001, decay=0.1), metrics=['accuracy'])
         decoder.trainable = True
         self.generator = generator
         self.decoder = decoder

@@ -49,9 +49,13 @@ print('Loading training data')
 #y_train is a tensor of size (num_train_examples, num_timesteps, num_frequency_dims)
 X_train = np.load(inputFile + '_x.npy')
 y_train = np.load(inputFile + '_y.npy')
+print(X_train.shape)
+print(y_train.shape)
 if not skip_validation:
     X_val = np.load(inputFile + '_val_x.npy')
     y_val = np.load(inputFile + '_val_y.npy')
+    print(X_val.shape)
+    print(y_val.shape)
 print('Finished loading training data')
 
 #Figure out how many frequencies we have in the data

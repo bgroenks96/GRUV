@@ -120,14 +120,14 @@ def convert_wav_files_to_nptensor(directory, block_size, max_seq_len, out_file, 
     num_files = len(files)
     for file_idx in xrange(num_files):
         file = files[file_idx]
-        print 'Processing: ', (file_idx+1),'/',num_files
-        print 'Filename: ', file
+        print('Processing: {0}/{1}'.format((file_idx+1), num_files))
+        print('Filename: {0}'.format(file))
         X, Y = load_training_example(file, block_size, useTimeDomain=useTimeDomain)
         assert all(b.shape == (2*block_size,) for b in X)
         assert len(X) == len(Y)
         cur_seq = 0
         total_seq = len(X)
-        step_size = max_seq_len / 2 # Duplicate part of each clip to try and include more time-distributed information about each song.
+        step_size = max_seq_len # / 2 # Duplicate part of each clip to try and include more time-distributed information about each song.
         while cur_seq + max_seq_len < total_seq:
             chunks_X.append(X[cur_seq:cur_seq+max_seq_len])
             chunks_Y.append(Y[cur_seq:cur_seq+max_seq_len])
@@ -162,8 +162,10 @@ def convert_wav_files_to_nptensor(directory, block_size, max_seq_len, out_file, 
                 idx = n
             x_data[idx][i] = chunks_X[n][i]
             y_data[idx][i] = chunks_Y[n][i]
-        print 'Saved example ', (n+1), ' / ',num_examples
-    print 'Flushing to disk...'
+        print('Saved example {0}/{1}'.format((n+1), num_examples))
+    print('Flushing to disk...')
+    assert x_data.shape[0] != len(chunks_X)
+    assert y_data.shape[0] != len(chunks_Y)
     mean_x = np.mean(np.mean(x_data, axis=0), axis=0) #Mean across num examples and num timesteps
     std_x = np.sqrt(np.mean(np.mean(np.abs(x_data-mean_x)**2, axis=0), axis=0)) # STD across num examples and num timesteps
     std_x = np.maximum(1.0e-8, std_x) #Clamp variance if too tiny
@@ -188,7 +190,7 @@ def convert_wav_files_to_nptensor(directory, block_size, max_seq_len, out_file, 
         y_val[:][:] /= val_std_x #Variance 1
         np.save(out_file+'_val_x', x_val)
         np.save(out_file+'_val_y', y_val)
-    print 'Done!'
+    print('Done!')
 
 def convert_nptensor_to_wav_files(tensor, indices, filename, useTimeDomain=False):
     num_seqs = tensor.shape[1]
