@@ -28,17 +28,17 @@ def generate(model, X_train, max_seq_len, seed_len=1, gen_count=1, include_seed_
     print('Finished generation!')
     
 def __main__():
+    config = nn_config.get_neural_net_configuration()
     parser = argparse.ArgumentParser(description="Generate song from current saved training data.")
     parser.add_argument("--batch", default=1, type=int, help="Number of generations to run.")
     parser.add_argument("--iteration", default=0, type=int, help="Current training iteration load weights for.")
     parser.add_argument("--seqlen", default=10, type=int, help="Sequence length.")
     parser.add_argument("--use-train", action='store_true', help='True if training data should be sampled to seed generation. Defaults to false (use generation data).')
     parser.add_argument("--include-seed", action='store_true', help="True if the generated audio should include the model's prediction output for the seed samples.")
-    parser.add_argument("--hidden-dims", default=config['hidden_dimension_size'], type=float, help="Number of hidden layer dimensions.")
-    parser.add_argument("--hidden-layers", default=config['hidden_recurrent_layers'], type=float, help="Number of hidden layers (generator only).")
+    parser.add_argument("--hidden-dims", default=config['hidden_dimension_size'], type=int, help="Number of hidden layer dimensions.")
+    parser.add_argument("--hidden-layers", default=config['hidden_recurrent_layers'], type=int, help="Number of hidden layers (generator only).")
     args = parser.parse_args()
 
-    config = nn_config.get_neural_net_configuration()
     sample_frequency = config['sampling_frequency']
     if args.use_train:
         inputFile = config['model_file']
