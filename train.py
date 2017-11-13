@@ -65,7 +65,7 @@ if args.batch == None:                          #Number of training examples per
 elif args.batch == 'auto':
     batch_size = X_train.shape[0]
     while batch_size > MAX_AUTO_BATCH_SIZE:
-        batch_size /= 2
+        batch_size = int(np.ceil(batch_size / 2.0))
 else:
     batch_size = int(args.batch)
 
