@@ -1,5 +1,6 @@
 from keras.models import Sequential
 from keras.layers import *
+from keras import optimizers
 import numpy as np
 
 def create_lstm_network(num_frequency_dimensions, num_hidden_dimensions, num_recurrent_units=1, optimizer='rmsprop', dropout_rate=0.3):
@@ -43,15 +44,15 @@ def create_gan(num_frequency_dimensions, num_hidden_dimensions, num_recurrent_un
     decoder.add(Dense(1, activation='sigmoid'))
     decoder.compile(loss='binary_crossentropy', optimizer=optimizer, metrics=['accuracy'])
     # Create GAN (combined model)
-    return GAN(generator, decoder, optimizer)
+    return GAN(generator, decoder)
 
 class GAN:
-    def __init__(self, generator, decoder, optimizer):
+    def __init__(self, generator, decoder):
         model = Sequential()
         model.add(generator)
         decoder.trainable = False
         model.add(decoder)
-        model.compile(loss='binary_crossentropy', optimizer=optimizer, metrics=['accuracy'])
+        model.compile(loss='binary_crossentropy', optimizer=optimizers.SGD(lr=0.01, decay=0.05, clipnorm=1.0), metrics=['accuracy'])
         decoder.trainable = True
         self.generator = generator
         self.decoder = decoder

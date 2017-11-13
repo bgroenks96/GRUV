@@ -21,6 +21,7 @@ parser.add_argument("num_iterations", default=10, type=int, help='Number of trai
 parser.add_argument("--dec-epochs", default=50, type=int, help="Number of epochs per iteration to train the decoder.")
 parser.add_argument("--gen-epochs", default=25, type=int, help="Number of epochs per iteration of the generator.")
 parser.add_argument("--com-epochs", default=1, type=int, help="Number of epochs per iteration to train the combined GAN model.")
+parser.add_argument("--dec-samples", default=10, type=int, help="Number of decoder samples to use.")
 parser.add_argument("-b", "--max-batch", default=500, type=int, help="Maximum number of training examples to batch per gradient update.")
 parser.add_argument("--skip-validation", action="store_true", help="Do not use cross validation data.")
 parser.add_argument("-n", "--interval", default=10, type=int, help="Number of iterations to run in between retaining saved weights.")
@@ -130,7 +131,7 @@ def train_decoder(X_train, sample_size):
     
 # Training phase 1: Generator pre-training
 print('Starting training...')
-decoder_data_len = min(MAX_DECODER_EXAMPLES, X_train.shape[0] / 2)
+decoder_data_len = min(args.dec_samples, min(MAX_DECODER_EXAMPLES, X_train.shape[0]))
 # If we're not starting at zero, then bump current iteration up one, assuming we've loaded weights for the starting iteration
 if cur_iter > 0:
     cur_iter += 1
