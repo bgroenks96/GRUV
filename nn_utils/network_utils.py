@@ -3,7 +3,7 @@ from keras.layers import *
 from keras import optimizers
 import numpy as np
 
-def create_lstm_network(num_frequency_dimensions, num_hidden_dimensions, optimizer='rmsprop', dropout_rate=0.3):
+def create_lstm_network(num_frequency_dimensions, num_hidden_dimensions, config):
     inputs = Input(shape=(None, num_frequency_dimensions))
     #td_input = TimeDistributed(Dense(num_hidden_dimensions))(inputs)
     
@@ -16,6 +16,7 @@ def create_lstm_network(num_frequency_dimensions, num_hidden_dimensions, optimiz
     ## Merge mult
     #add = Add()([lstm_1_2, lstm_2_2])
     
+    dropout_rate = config['generator_dropout']
     conv_in = Conv1D(num_hidden_dimensions, kernel_size=2, activation='tanh', padding='causal')(inputs)
     lstm_1 = LSTM(num_hidden_dimensions, return_sequences=True)(GaussianDropout(dropout_rate)(conv_in))
     lstm_2 = LSTM(num_hidden_dimensions, return_sequences=True)(GaussianDropout(dropout_rate)(lstm_1))
@@ -24,7 +25,7 @@ def create_lstm_network(num_frequency_dimensions, num_hidden_dimensions, optimiz
     # Convert back to frequency space
     #td_output = TimeDistributed(Dense(num_frequency_dimensions))(lstm_2)
     model = Model(inputs=inputs, outputs=conv_out)
-    model.compile(loss='logcosh', optimizer=optimizer)
+    model.compile(loss='logcosh', optimizer=config['generator_optimizer'])
     return model
 
 def create_gru_network(num_frequency_dimensions, num_hidden_dimensions, num_recurrent_units=1, optimizer='rmsprop', dropout_rate=0.3):
@@ -45,28 +46,28 @@ def create_noise_network(num_frequency_dimensions, num_hidden_dimensions):
     model.compile(loss='mean_squared_error', optimizer='rmsprop')
     return model
 
-def create_gan(num_frequency_dimensions, num_hidden_dimensions, optimizer='adam', dropout_rate=0.3):
+def create_gan(num_frequency_dimensions, num_hidden_dimensions, config):
     # Create generator network
-    generator = create_lstm_network(num_frequency_dimensions, num_hidden_dimensions, optimizer=optimizer, dropout_rate=dropout_rate)
+    generator = create_lstm_network(num_frequency_dimensions, num_hidden_dimensions, config)
     # Create decoder (or "discriminator") network
     inputs = Input(shape=(None, num_frequency_dimensions))
     conv_in = Conv1D(num_hidden_dimensions, kernel_size=2, activation='tanh', padding='same', input_shape=(None, num_frequency_dimensions))(inputs)
-    lstm_1 = LSTM(num_hidden_dimensions, activation='relu', return_sequences=True)(conv_in)
-    lstm_2 = LSTM(num_hidden_dimensions, activation='relu', return_sequences=True)(lstm_1)
-    td_dense = TimeDistributed(Dense(num_hidden_dimensions, activation='relu'))(lstm_2)
+    lstm_1 = LSTM(num_hidden_dimensions, activation='tanh', return_sequences=True)(conv_in)
+    lstm_2 = LSTM(num_hidden_dimensions, activation='tanh', return_sequences=True)(lstm_1)
+    td_dense = TimeDistributed(Dense(num_hidden_dimensions, activation='tanh'))(lstm_2)
     dense_out = Dense(1, activation='sigmoid')(td_dense)
     decoder = Model(inputs=inputs, outputs=dense_out)
-    decoder.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
+    decoder.compile(loss='binary_crossentropy', optimizer=config['decoder_optimizer'], metrics=['accuracy'])
     # Create GAN (combined model)
-    return GAN(generator, decoder)
+    return GAN(generator, decoder, config)
 
 class GAN:
-    def __init__(self, generator, decoder):
+    def __init__(self, generator, decoder, config):
         model = Sequential()
         model.add(generator)
         decoder.trainable = False
         model.add(decoder)
-        model.compile(loss='binary_crossentropy', optimizer=optimizers.RMSprop(lr=0.0005, decay=0.05), metrics=['accuracy'])
+        model.compile(loss='binary_crossentropy', optimizer=config['combined_optimizer'], metrics=['accuracy'])
         decoder.trainable = True
         self.generator = generator
         self.decoder = decoder

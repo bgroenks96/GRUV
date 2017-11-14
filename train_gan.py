@@ -10,9 +10,6 @@ import gen_utils.sequence_generator as sequence_generator
 import tensorflow as tf
 import argparse
 
-# Default maximum batch size for 'auto' batching
-MAX_DECODER_EXAMPLES = 100
-
 config = nn_config.get_neural_net_configuration()
 
 parser = argparse.ArgumentParser(description="Train the NuGRUV GAN against the current dataset.")
@@ -21,14 +18,12 @@ parser.add_argument("num_iterations", default=10, type=int, help='Number of trai
 parser.add_argument("--dec-epochs", default=50, type=int, help="Number of epochs per iteration to train the decoder.")
 parser.add_argument("--gen-epochs", default=25, type=int, help="Number of epochs per iteration of the generator.")
 parser.add_argument("--com-epochs", default=1, type=int, help="Number of epochs per iteration to train the combined GAN model.")
-parser.add_argument("--dec-samples", default=10, type=int, help="Number of decoder samples to use.")
+parser.add_argument("--dec-samples", default=10, type=int, help="Number of samples to generate for the decoder to train against on each iteration.")
 parser.add_argument("-b", "--max-batch", default=500, type=int, help="Maximum number of training examples to batch per gradient update.")
 parser.add_argument("--skip-validation", action="store_true", help="Do not use cross validation data.")
 parser.add_argument("-n", "--interval", default=10, type=int, help="Number of iterations to run in between retaining saved weights.")
-parser.add_argument("-o", "--optimizer", default="rmsprop", type=str, help="Name of the optimizer to use for the generative model. Defaults to 'rmsprop'")
-parser.add_argument("-d", "--dropout", default=0.3, type=float, help="Probability of dropout applied to the first layer of the generative network.")
 parser.add_argument("-r", "--run", default=0, type=int, help="Integer id for this run (used for weight files). Defaults to zero.")
-parser.add_argument("--hidden-dims", default=config['hidden_dimension_size'], type=int, help="Number of hidden layer dimensions.")
+parser.add_argument("--hidden-dims", default=config['hidden_dimension_size'], type=int, help="Number of hidden layer dimensions in the generative network. Higher values require more VRAM.")
 args = parser.parse_args()
 
 sess = tf.Session(config=tf.ConfigProto(log_device_placement=True))
@@ -63,7 +58,7 @@ hidden_dims = args.hidden_dims
 
 #Creates a Genearative Adverserial Network (GAN) using the normal NuGRUV LSTM network as the generator.
 print('Initializing network...')
-gan = network_utils.create_gan(num_frequency_dimensions=freq_space_dims, num_hidden_dimensions=hidden_dims, optimizer=args.optimizer, dropout_rate=args.dropout)
+gan = network_utils.create_gan(num_frequency_dimensions=freq_space_dims, num_hidden_dimensions=hidden_dims, config=config)
 
 print('Model summary:')
 gan.summary()
@@ -132,7 +127,7 @@ def train_decoder(X_train, sample_size):
     
 # Training phase 1: Generator pre-training
 print('Starting training...')
-decoder_data_len = min(args.dec_samples, min(MAX_DECODER_EXAMPLES, X_train.shape[0]))
+decoder_data_len = min(args.dec_samples, X_train.shape[0])
 # If we're not starting at zero, then bump current iteration up one, assuming we've loaded weights for the starting iteration
 if cur_iter > 0:
     cur_iter += 1
