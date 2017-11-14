@@ -32,15 +32,16 @@ def __main__():
     parser = argparse.ArgumentParser(description="Generate song from current saved training data.")
     parser.add_argument("--batch", default=1, type=int, help="Number of generations to run.")
     parser.add_argument("--iteration", default=0, type=int, help="Current training iteration load weights for.")
-    parser.add_argument("--seqlen", default=10, type=int, help="Sequence length.")
-    parser.add_argument("--use-train", action='store_true', help='True if training data should be sampled to seed generation. Defaults to false (use generation data).')
+    parser.add_argument("--seqlen", default=10, type=int, help="Generated sequence length.")
+    parser.add_argument("--seed-len", default=1, type=int, help="Seed length")
+    parser.add_argument("--dataset", default='train', type=str, help='The dataset to draw from. Defaults to "train".')
     parser.add_argument("--include-seed", action='store_true', help="True if the generated audio should include the model's prediction output for the seed samples.")
     parser.add_argument("--hidden-dims", default=config['hidden_dimension_size'], type=int, help="Number of hidden layer dimensions.")
     parser.add_argument("--hidden-layers", default=config['hidden_recurrent_layers'], type=int, help="Number of hidden layers (generator only).")
     args = parser.parse_args()
 
     sample_frequency = config['sampling_frequency']
-    if args.use_train:
+    if args.dataset == 'train':
         inputFile = config['model_file']
     else:
         inputFile = config['gen_file']
@@ -51,7 +52,7 @@ def __main__():
     output_filename = './generated_song'
 
     #Load up the training data
-    if args.use_train:
+    if args.dataset == 'train':
         print('Loading training data')
     else:
         print('Loading generation data')
@@ -64,7 +65,7 @@ def __main__():
     X_mean = np.load(inputFile + '_mean.npy')
     X_var = np.load(inputFile + '_var.npy')
     print('Finished loading data')
-
+    
     #Figure out how many frequencies we have in the data
     num_timesteps = X_train.shape[1]
     freq_space_dims = X_train.shape[2]
@@ -90,7 +91,7 @@ def __main__():
 
     max_seq_len = args.seqlen; #Defines how long the final song is. Total song length in samples = max_seq_len * example_len
 
-    outputs = generate(model, X_train, max_seq_len, gen_count=gen_count, include_seed_in_output=args.include_seed, uncenter_data=True, X_var=X_var, X_mean=X_mean)
+    outputs = generate(model, X_train, max_seq_len, seed_len=args.seed_len, gen_count=gen_count, include_seed_in_output=args.include_seed, uncenter_data=True, X_var=X_var, X_mean=X_mean)
     for i in xrange(gen_count):
         #Save the generated sequence to a WAV file
         save_generated_example('{0}_{1}.wav'.format(output_filename, i), outputs[i], sample_frequency=sample_frequency)

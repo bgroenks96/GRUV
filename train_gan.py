@@ -129,7 +129,7 @@ def train_decoder(X_train, sample_size):
     print('Training decoder...')
     X_real = random_training_examples(X_train, seed_len=2, count=sample_size)
     print(X_real.shape)
-    X_fake = generate(gan.generator, X_train, max_seq_len=num_timesteps, gen_count=sample_size, include_seed_in_output=True, uncenter_data=False)
+    X_fake = generate(gan.generator, X_train, max_seq_len=num_timesteps, gen_count=sample_size, include_seed_in_output=False, uncenter_data=False)
     print(X_fake.shape)
     dec_hist = gan.fit_decoder(X_real, X_fake, epochs=args.dec_epochs, shuffle=True, verbose=1, validation_split=0.25)
     
