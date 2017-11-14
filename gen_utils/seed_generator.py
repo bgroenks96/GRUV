@@ -9,3 +9,4 @@ def generate_copy_seed_sequence(seed_length, training_data):
     randSeed = np.concatenate(tuple([training_data[randIdx + i] for i in xrange(seed_length)]), axis=0)
     seedSeq = np.reshape(randSeed, (1, randSeed.shape[0], randSeed.shape[1]))
     return seedSeq
+

@@ -3,7 +3,7 @@ from keras.layers import *
 from keras import optimizers
 import numpy as np
 
-def create_lstm_network(num_frequency_dimensions, num_hidden_dimensions, num_recurrent_units=1, optimizer='rmsprop', dropout_rate=0.3):
+def create_lstm_network(num_frequency_dimensions, num_hidden_dimensions, optimizer='rmsprop', dropout_rate=0.3):
     inputs = Input(shape=(None, num_frequency_dimensions))
     #td_input = TimeDistributed(Dense(num_hidden_dimensions))(inputs)
     
@@ -45,9 +45,9 @@ def create_noise_network(num_frequency_dimensions, num_hidden_dimensions):
     model.compile(loss='mean_squared_error', optimizer='rmsprop')
     return model
 
-def create_gan(num_frequency_dimensions, num_hidden_dimensions, num_recurrent_units=1, optimizer='adam', dropout_rate=0.3):
+def create_gan(num_frequency_dimensions, num_hidden_dimensions, optimizer='adam', dropout_rate=0.3):
     # Create generator network
-    generator = create_lstm_network(num_frequency_dimensions, num_hidden_dimensions, num_recurrent_units=num_recurrent_units, optimizer=optimizer, dropout_rate=dropout_rate)
+    generator = create_lstm_network(num_frequency_dimensions, num_hidden_dimensions, optimizer=optimizer, dropout_rate=dropout_rate)
     # Create decoder (or "discriminator") network
     inputs = Input(shape=(None, num_frequency_dimensions))
     conv_in = Conv1D(num_hidden_dimensions, kernel_size=2, activation='tanh', padding='same', input_shape=(None, num_frequency_dimensions))(inputs)

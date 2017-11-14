@@ -29,7 +29,6 @@ parser.add_argument("-o", "--optimizer", default="rmsprop", type=str, help="Name
 parser.add_argument("-d", "--dropout", default=0.3, type=float, help="Probability of dropout applied to the first layer of the generative network.")
 parser.add_argument("-r", "--run", default=0, type=int, help="Integer id for this run (used for weight files). Defaults to zero.")
 parser.add_argument("--hidden-dims", default=config['hidden_dimension_size'], type=int, help="Number of hidden layer dimensions.")
-parser.add_argument("--hidden-layers", default=config['hidden_recurrent_layers'], type=int, help="Number of hidden layers (generator only).")
 args = parser.parse_args()
 
 sess = tf.Session(config=tf.ConfigProto(log_device_placement=True))
@@ -61,11 +60,10 @@ print('Finished loading training data')
 num_timesteps = X_train.shape[1]
 freq_space_dims = X_train.shape[2]
 hidden_dims = args.hidden_dims
-hidden_layers = args.hidden_layers
 
 #Creates a Genearative Adverserial Network (GAN) using the normal NuGRUV LSTM network as the generator.
 print('Initializing network...')
-gan = network_utils.create_gan(num_frequency_dimensions=freq_space_dims, num_hidden_dimensions=hidden_dims, num_recurrent_units=hidden_layers, optimizer=args.optimizer, dropout_rate=args.dropout)
+gan = network_utils.create_gan(num_frequency_dimensions=freq_space_dims, num_hidden_dimensions=hidden_dims, optimizer=args.optimizer, dropout_rate=args.dropout)
 
 print('Model summary:')
 gan.summary()
@@ -123,9 +121,12 @@ def random_training_examples(X_train, seed_len=1, count=1):
 
 def train_decoder(X_train, sample_size):
     print('Training decoder...')
-    X_real = random_training_examples(X_train, seed_len=2, count=sample_size)
+    X_real = random_training_examples(X_train, seed_len=1, count=sample_size)
     print(X_real.shape)
-    X_fake = generate(gan.generator, X_train, max_seq_len=num_timesteps, gen_count=sample_size, include_seed_in_output=False, uncenter_data=False)
+    # Generate fake examples from random seeds. To make sure we train the decoder on the same input it will receive from the generator
+    # in the combined model, we need to cap the sequence length at 'num_timesteps' (note: this means only the model's reproduction of the seed sequence + 1 num_timesteps
+    # will be included in the output; room for further improvement)
+    X_fake = generate(gan.generator, X_train, max_seq_len=num_timesteps, gen_count=sample_size, include_raw_seed=False, include_model_seed=True, uncenter_data=False)
     print(X_fake.shape)
     dec_hist = gan.fit_decoder(X_real, X_fake, epochs=args.dec_epochs, shuffle=True, verbose=1, validation_split=0.25)
     
