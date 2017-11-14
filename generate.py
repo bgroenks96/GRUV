@@ -48,7 +48,7 @@ def __main__():
     cur_iter = args.iteration
     gen_count = args.batch
     model_filename = model_basename + str(cur_iter)
-    output_filename = './generated_song.wav'
+    output_filename = './generated_song'
 
     #Load up the training data
     if args.use_train:
@@ -93,7 +93,7 @@ def __main__():
     outputs = generate(model, X_train, max_seq_len, gen_count=gen_count, include_seed_in_output=args.include_seed, uncenter_data=True, X_var=X_var, X_mean=X_mean)
     for i in xrange(gen_count):
         #Save the generated sequence to a WAV file
-        save_generated_example('{0}_{1}'.format(output_filename, i), outputs[i], sample_frequency=sample_frequency)
+        save_generated_example('{0}_{1}.wav'.format(output_filename, i), outputs[i], sample_frequency=sample_frequency)
         
 if __name__ == '__main__':
     __main__()
