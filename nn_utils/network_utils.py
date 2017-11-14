@@ -6,16 +6,22 @@ import numpy as np
 def create_lstm_network(num_frequency_dimensions, num_hidden_dimensions, num_recurrent_units=1, optimizer='rmsprop', dropout_rate=0.3):
     inputs = Input(shape=(None, num_frequency_dimensions))
     td_input = TimeDistributed(Dense(num_hidden_dimensions))(inputs)
-    # LSTM upper layer
-    lstm_1_1 = LSTM(num_hidden_dimensions, return_sequences=True)(GaussianDropout(dropout_rate)(td_input))
-    lstm_1_2 = LSTM(num_hidden_dimensions / 2, return_sequences=True)(GaussianNoise(0.2)(lstm_1_1))
-    # LSTM lower layer
-    lstm_2_1 = LSTM(num_hidden_dimensions, return_sequences=True)(GaussianDropout(dropout_rate)(td_input))
-    lstm_2_2 = LSTM(num_hidden_dimensions / 2, return_sequences=True)(GaussianNoise(0.2)(lstm_2_1))
-    # Merge mult
-    add = Add()([lstm_1_2, lstm_2_2])
+    
+    ## LSTM upper layer
+    #lstm_1_1 = LSTM(num_hidden_dimensions, return_sequences=True)(GaussianDropout(dropout_rate)(td_input))
+    #lstm_1_2 = LSTM(num_hidden_dimensions / 2, return_sequences=True)(GaussianNoise(0.2)(lstm_1_1))
+    ## LSTM lower layer
+    #lstm_2_1 = LSTM(num_hidden_dimensions, return_sequences=True)(GaussianDropout(dropout_rate)(td_input))
+    #lstm_2_2 = LSTM(num_hidden_dimensions / 2, return_sequences=True)(GaussianNoise(0.2)(lstm_2_1))
+    ## Merge mult
+    #add = Add()([lstm_1_2, lstm_2_2])
+    
+    lstm_pre = LSTM(num_hidden_dimensions, return_sequences=True)(GaussianDropout(dropout_rate)(td_input))
+    conv1d = Conv1D(num_hidden_dimensions, kernel_size=3, activation='tanh', padding='causal')(lstm_pre)
+    lstm_post = LSTM(num_hidden_dimensions, return_sequences=True)(GaussianDropout(dropout_rate)(conv1d))
+    
     # Convert back to frequency space
-    td_output = TimeDistributed(Dense(num_frequency_dimensions))(add)
+    td_output = TimeDistributed(Dense(num_frequency_dimensions))(lstm_post)
     model = Model(inputs=inputs, outputs=td_output)
     model.compile(loss='mean_squared_error', optimizer=optimizer)
     return model
