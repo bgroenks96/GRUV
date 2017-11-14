@@ -43,7 +43,7 @@ def create_gan(num_frequency_dimensions, num_hidden_dimensions, num_recurrent_un
     generator = create_lstm_network(num_frequency_dimensions, num_hidden_dimensions, num_recurrent_units=num_recurrent_units, optimizer=optimizer, dropout_rate=dropout_rate)
     # Create decoder (or "discriminator") network
     decoder = Sequential()
-    decoder.add(Conv1D(num_hidden_dimensions, kernel_size=2, activation='tanh', padding='valid', input_shape=(None, num_frequency_dimensions)))
+    decoder.add(Conv1D(num_hidden_dimensions, kernel_size=2, activation='tanh', padding='same', input_shape=(None, num_frequency_dimensions)))
     decoder.add(Dense(num_hidden_dimensions, activation='tanh'))
     decoder.add(Dense(1, activation='sigmoid'))
     decoder.compile(loss='binary_crossentropy', optimizer='adadelta', metrics=['accuracy'])
