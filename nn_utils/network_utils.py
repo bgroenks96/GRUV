@@ -5,7 +5,7 @@ import numpy as np
 
 def create_lstm_network(num_frequency_dimensions, num_hidden_dimensions, num_recurrent_units=1, optimizer='rmsprop', dropout_rate=0.3):
     inputs = Input(shape=(None, num_frequency_dimensions))
-    td_input = TimeDistributed(Dense(num_hidden_dimensions))(inputs)
+    #td_input = TimeDistributed(Dense(num_hidden_dimensions))(inputs)
     
     ## LSTM upper layer
     #lstm_1_1 = LSTM(num_hidden_dimensions, return_sequences=True)(GaussianDropout(dropout_rate)(td_input))
@@ -16,14 +16,14 @@ def create_lstm_network(num_frequency_dimensions, num_hidden_dimensions, num_rec
     ## Merge mult
     #add = Add()([lstm_1_2, lstm_2_2])
     
-    conv_1 = Conv1D(num_hidden_dimensions, kernel_size=2, activation='tanh', padding='causal')(td_input)
-    lstm_1 = LSTM(num_hidden_dimensions, return_sequences=True)(GaussianDropout(dropout_rate)(conv_1))
-    conv_2 = Conv1D(num_hidden_dimensions, kernel_size=2, activation='tanh', padding='causal')(lstm_1)
-    lstm_2 = LSTM(num_hidden_dimensions, return_sequences=True)(GaussianDropout(dropout_rate)(conv_2))
+    conv_in = Conv1D(num_hidden_dimensions, kernel_size=2, activation='tanh', padding='causal')(inputs)
+    lstm_1 = LSTM(num_hidden_dimensions, return_sequences=True)(GaussianDropout(dropout_rate)(conv_in))
+    lstm_2 = LSTM(num_hidden_dimensions, return_sequences=True)(GaussianDropout(dropout_rate)(lstm_1))
+    conv_out = Conv1D(num_frequency_dimensions, kernel_size=2, activation='tanh', padding='causal')(lstm_1)
     
     # Convert back to frequency space
-    td_output = TimeDistributed(Dense(num_frequency_dimensions))(lstm_2)
-    model = Model(inputs=inputs, outputs=td_output)
+    #td_output = TimeDistributed(Dense(num_frequency_dimensions))(lstm_2)
+    model = Model(inputs=inputs, outputs=conv_out)
     model.compile(loss='logcosh', optimizer=optimizer)
     return model
 
@@ -49,15 +49,13 @@ def create_gan(num_frequency_dimensions, num_hidden_dimensions, num_recurrent_un
     # Create generator network
     generator = create_lstm_network(num_frequency_dimensions, num_hidden_dimensions, num_recurrent_units=num_recurrent_units, optimizer=optimizer, dropout_rate=dropout_rate)
     # Create decoder (or "discriminator") network
-    decoder = Sequential()
-    #decoder.add(Conv1D(num_hidden_dimensions, kernel_size=2, activation='tanh', padding='same', input_shape=(None, num_frequency_dimensions)))
-    decoder.add(TimeDistributed(Dense(num_hidden_dimensions), input_shape=(None, num_frequency_dimensions)))
-    decoder.add(Conv1D(num_hidden_dimensions / 2, kernel_size=2, activation='tanh', padding='same'))
-    #decoder.add(AveragePooling1D(pool_size=2, strides=2, padding='same'))
-    decoder.add(Conv1D(num_hidden_dimensions / 4, kernel_size=2, activation='tanh', padding='same'))
-    decoder.add(Dense(num_hidden_dimensions / 4, activation='tanh'))
-    #decoder.add(AveragePooling1D(pool_size=2, strides=2, padding='same'))
-    decoder.add(Dense(1, activation='sigmoid'))
+    inputs = Input(shape=(None, num_frequency_dimensions))
+    conv_in = Conv1D(num_hidden_dimensions, kernel_size=2, activation='tanh', padding='same', input_shape=(None, num_frequency_dimensions))(inputs)
+    lstm_1 = LSTM(num_hidden_dimensions, activation='relu', return_sequences=True)(conv_in)
+    lstm_2 = LSTM(num_hidden_dimensions, activation='relu', return_sequences=True)(lstm_1)
+    td_dense = TimeDistributed(Dense(num_hidden_dimensions, activation='relu'))(lstm_2)
+    dense_out = Dense(1, activation='sigmoid')(td_dense)
+    decoder = Model(inputs=inputs, outputs=dense_out)
     decoder.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
     # Create GAN (combined model)
     return GAN(generator, decoder)
