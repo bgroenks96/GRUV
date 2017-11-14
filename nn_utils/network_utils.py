@@ -1,17 +1,22 @@
-from keras.models import Sequential
+from keras.models import *
 from keras.layers import *
 from keras import optimizers
 import numpy as np
 
 def create_lstm_network(num_frequency_dimensions, num_hidden_dimensions, num_recurrent_units=1, optimizer='rmsprop', dropout_rate=0.3):
-    model = Sequential()
-    #This layer converts frequency space to hidden space
-    model.add(TimeDistributed(Dense(num_hidden_dimensions), input_shape=(None, num_frequency_dimensions)))
-    model.add(GaussianDropout(dropout_rate))
-    for cur_unit in xrange(num_recurrent_units):
-        model.add(LSTM(units=num_hidden_dimensions, return_sequences=True))
-    #This layer converts hidden space back to frequency space
-    model.add(TimeDistributed(Dense(num_frequency_dimensions)))
+    inputs = Input(shape=(None, num_frequency_dimensions))
+    td_input = TimeDistributed(Dense(num_hidden_dimensions))(inputs)
+    # LSTM upper layer
+    lstm_1_1 = LSTM(num_hidden_dimensions, return_sequences=True)(GaussianDropout(dropout_rate)(td_input))
+    lstm_1_2 = LSTM(num_hidden_dimensions / 2, return_sequences=True)(GaussianNoise(0.2)(lstm_1_1))
+    # LSTM lower layer
+    lstm_2_1 = LSTM(num_hidden_dimensions, return_sequences=True)(GaussianDropout(dropout_rate)(td_input))
+    lstm_2_2 = LSTM(num_hidden_dimensions / 2, return_sequences=True)(GaussianNoise(0.2)(lstm_2_1))
+    # Merge mult
+    add = Add()([lstm_1_2, lstm_2_2])
+    # Convert back to frequency space
+    td_output = TimeDistributed(Dense(num_frequency_dimensions))(add)
+    model = Model(inputs=inputs, outputs=td_output)
     model.compile(loss='mean_squared_error', optimizer=optimizer)
     return model
 
@@ -38,11 +43,10 @@ def create_gan(num_frequency_dimensions, num_hidden_dimensions, num_recurrent_un
     generator = create_lstm_network(num_frequency_dimensions, num_hidden_dimensions, num_recurrent_units=num_recurrent_units, optimizer=optimizer, dropout_rate=dropout_rate)
     # Create decoder (or "discriminator") network
     decoder = Sequential()
-    decoder.add(TimeDistributed(Dense(num_hidden_dimensions, activation='tanh'), input_shape=(None, num_frequency_dimensions)))
-    decoder.add(Dense(num_hidden_dimensions, activation='tanh'))
+    decoder.add(Conv1D(num_hidden_dimensions, kernel_size=2, activation='tanh', padding='valid', input_shape=(None, num_frequency_dimensions)))
     decoder.add(Dense(num_hidden_dimensions, activation='tanh'))
     decoder.add(Dense(1, activation='sigmoid'))
-    decoder.compile(loss='binary_crossentropy', optimizer=optimizer, metrics=['accuracy'])
+    decoder.compile(loss='binary_crossentropy', optimizer='adadelta', metrics=['accuracy'])
     # Create GAN (combined model)
     return GAN(generator, decoder)
 
