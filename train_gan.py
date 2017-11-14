@@ -27,6 +27,7 @@ parser.add_argument("--skip-validation", action="store_true", help="Do not use c
 parser.add_argument("-n", "--interval", default=10, type=int, help="Number of iterations to run in between retaining saved weights.")
 parser.add_argument("-o", "--optimizer", default="rmsprop", type=str, help="Name of the optimizer to use for the generative model. Defaults to 'rmsprop'")
 parser.add_argument("-d", "--dropout", default=0.3, type=float, help="Probability of dropout applied to the first layer of the generative network.")
+parser.add_argument("-r", "--run", default=0, type=int, help="Integer id for this run (used for weight files). Defaults to zero.")
 parser.add_argument("--hidden-dims", default=config['hidden_dimension_size'], type=int, help="Number of hidden layer dimensions.")
 parser.add_argument("--hidden-layers", default=config['hidden_recurrent_layers'], type=int, help="Number of hidden layers (generator only).")
 args = parser.parse_args()
@@ -35,11 +36,9 @@ sess = tf.Session(config=tf.ConfigProto(log_device_placement=True))
 
 inputFile = config['model_file']
 cur_iter = args.current_iteration
-model_basename = config['model_basename'] + '-GAN'
-model_filename = model_basename + str(cur_iter)
-dec_basename = config['model_basename'] + '-Dec'
+dec_basename = config['model_basename'] + str(args.run) + '-Dec_'
 dec_filename = dec_basename + str(cur_iter)
-gen_basename = config['model_basename']
+gen_basename = config['model_basename'] + str(args.run) + '_'
 gen_filename = gen_basename + str(cur_iter)
 skip_validation = args.skip_validation
 
@@ -72,9 +71,6 @@ print('Model summary:')
 gan.summary()
 
 #Load existing weights if available
-if os.path.isfile(model_filename):
-    print('Loading existing weight data (GAN) from {}'.format(model_filename))
-    gan.model.load_weights(model_filename)
 if os.path.isfile(dec_filename):
     print('Loading existing weight data (Decoder) from {}'.format(dec_filename))
     gan.decoder.load_weights(dec_filename)
@@ -145,7 +141,7 @@ while cur_iter < num_iters:
     print('Iteration: {0}'.format(cur_iter))
     print('Training generator for {0} epochs (batch size: {1})'.format(args.gen_epochs, batch_size))
     gen_hist = gan.fit_generator(X_train, y_train, batch_size=batch_size, epochs=args.gen_epochs, shuffle=True, verbose=1, validation_data=val_data)
-    print('Saving generator weights for iteration {0} ...'.format(cur_iter))
+    print('Saving generator weights (pre-train) for iteration {0} ...'.format(cur_iter))
     gan.generator.save_weights(gen_basename + str(cur_iter))
     print('Training decoder for {0} epochs with {1} training examples'.format(args.dec_epochs, decoder_data_len))
     dec_hist = train_decoder(X_train, decoder_data_len)
@@ -153,8 +149,8 @@ while cur_iter < num_iters:
     gan.decoder.save_weights(dec_basename + str(cur_iter))
     print('Training combined model for {0} epochs'.format(args.com_epochs))
     gan.fit(X_train, batch_size=batch_size, epochs=args.com_epochs, shuffle=True, verbose=1, validation_split=0.25)
-    print('Saving combined model weights for iteration {0} ...'.format(cur_iter))
-    gan.model.save_weights(model_basename + str(cur_iter))
+    print('Saving generator weights (post-train) for iteration {0} ...'.format(cur_iter))
+    gan.generator.save_weights(gen_basename + str(cur_iter))
     
     # Clean weights from last iteration, if between persistent save intervals
     last_iter = cur_iter - 1

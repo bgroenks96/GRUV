@@ -36,6 +36,7 @@ def __main__():
     parser.add_argument("--seedlen", default=1, type=int, help="Seed length")
     parser.add_argument("--dataset", default='train', type=str, help='The dataset to draw from. Defaults to "train".')
     parser.add_argument("--include-seed", action='store_true', help="True if the generated audio should include the model's prediction output for the seed samples.")
+    parser.add_argument("-r", "--run", default=0, type=int, help="Integer id for this run (used for weight files). Defaults to zero.")
     parser.add_argument("--hidden-dims", default=config['hidden_dimension_size'], type=int, help="Number of hidden layer dimensions.")
     parser.add_argument("--hidden-layers", default=config['hidden_recurrent_layers'], type=int, help="Number of hidden layers (generator only).")
     args = parser.parse_args()
@@ -45,7 +46,7 @@ def __main__():
         inputFile = config['model_file']
     else:
         inputFile = config['gen_file']
-    model_basename = config['model_basename']
+    model_basename = config['model_basename'] + str(args.run) + '_'
     cur_iter = args.iteration
     gen_count = args.batch
     model_filename = model_basename + str(cur_iter)
