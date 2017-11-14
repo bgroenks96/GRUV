@@ -159,8 +159,6 @@ while cur_iter < num_iters:
             os.remove(gen_basename + str(last_iter))
         if os.path.isfile(dec_basename + str(last_iter)):
             os.remove(dec_basename + str(last_iter))
-        if os.path.isfile(model_basename + str(last_iter)):
-            os.remove(model_basename + str(last_iter))
             
     cur_iter += 1
     

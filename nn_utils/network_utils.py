@@ -16,14 +16,15 @@ def create_lstm_network(num_frequency_dimensions, num_hidden_dimensions, num_rec
     ## Merge mult
     #add = Add()([lstm_1_2, lstm_2_2])
     
-    lstm_pre = LSTM(num_hidden_dimensions, return_sequences=True)(GaussianDropout(dropout_rate)(td_input))
-    conv1d = Conv1D(num_hidden_dimensions, kernel_size=3, activation='tanh', padding='causal')(lstm_pre)
-    lstm_post = LSTM(num_hidden_dimensions, return_sequences=True)(GaussianDropout(dropout_rate)(conv1d))
+    conv_1 = Conv1D(num_hidden_dimensions, kernel_size=2, activation='tanh', padding='causal')(td_input)
+    lstm_1 = LSTM(num_hidden_dimensions, return_sequences=True)(GaussianDropout(dropout_rate)(conv_1))
+    conv_2 = Conv1D(num_hidden_dimensions, kernel_size=2, activation='tanh', padding='causal')(lstm_1)
+    lstm_2 = LSTM(num_hidden_dimensions, return_sequences=True)(GaussianDropout(dropout_rate)(conv_2))
     
     # Convert back to frequency space
-    td_output = TimeDistributed(Dense(num_frequency_dimensions))(lstm_post)
+    td_output = TimeDistributed(Dense(num_frequency_dimensions))(lstm_2)
     model = Model(inputs=inputs, outputs=td_output)
-    model.compile(loss='mean_squared_error', optimizer=optimizer)
+    model.compile(loss='logcosh', optimizer=optimizer)
     return model
 
 def create_gru_network(num_frequency_dimensions, num_hidden_dimensions, num_recurrent_units=1, optimizer='rmsprop', dropout_rate=0.3):
@@ -51,10 +52,13 @@ def create_gan(num_frequency_dimensions, num_hidden_dimensions, num_recurrent_un
     decoder = Sequential()
     #decoder.add(Conv1D(num_hidden_dimensions, kernel_size=2, activation='tanh', padding='same', input_shape=(None, num_frequency_dimensions)))
     decoder.add(TimeDistributed(Dense(num_hidden_dimensions), input_shape=(None, num_frequency_dimensions)))
-    decoder.add(Dense(num_hidden_dimensions, activation='tanh'))
-    decoder.add(Dense(num_hidden_dimensions, activation='tanh'))
+    decoder.add(Conv1D(num_hidden_dimensions / 2, kernel_size=2, activation='tanh', padding='same'))
+    #decoder.add(AveragePooling1D(pool_size=2, strides=2, padding='same'))
+    decoder.add(Conv1D(num_hidden_dimensions / 4, kernel_size=2, activation='tanh', padding='same'))
+    decoder.add(Dense(num_hidden_dimensions / 4, activation='tanh'))
+    #decoder.add(AveragePooling1D(pool_size=2, strides=2, padding='same'))
     decoder.add(Dense(1, activation='sigmoid'))
-    decoder.compile(loss='binary_crossentropy', optimizer='adadelta', metrics=['accuracy'])
+    decoder.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
     # Create GAN (combined model)
     return GAN(generator, decoder)
 
@@ -64,7 +68,7 @@ class GAN:
         model.add(generator)
         decoder.trainable = False
         model.add(decoder)
-        model.compile(loss='binary_crossentropy', optimizer=optimizers.RMSprop(lr=0.001, decay=0.1), metrics=['accuracy'])
+        model.compile(loss='binary_crossentropy', optimizer=optimizers.RMSprop(lr=0.0005, decay=0.05), metrics=['accuracy'])
         decoder.trainable = True
         self.generator = generator
         self.decoder = decoder
