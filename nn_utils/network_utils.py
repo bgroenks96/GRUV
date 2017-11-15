@@ -3,7 +3,7 @@ from keras.layers import *
 from keras import optimizers
 import numpy as np
 
-def create_lstm_network(num_frequency_dimensions, num_hidden_dimensions, config):
+def create_lstm_network(num_frequency_dimensions, config):
     inputs = Input(shape=(None, num_frequency_dimensions))
     #td_input = TimeDistributed(Dense(num_hidden_dimensions))(inputs)
     
@@ -16,6 +16,7 @@ def create_lstm_network(num_frequency_dimensions, num_hidden_dimensions, config)
     ## Merge mult
     #add = Add()([lstm_1_2, lstm_2_2])
     
+    num_hidden_dimensions = config['generator_hidden_dims']
     dropout_rate = config['generator_dropout']
     conv_in = Conv1D(num_hidden_dimensions, kernel_size=2, activation='tanh', padding='causal')(inputs)
     lstm_1 = LSTM(num_hidden_dimensions, return_sequences=True)(GaussianDropout(dropout_rate)(conv_in))
@@ -46,10 +47,11 @@ def create_noise_network(num_frequency_dimensions, num_hidden_dimensions):
     model.compile(loss='mean_squared_error', optimizer='rmsprop')
     return model
 
-def create_gan(num_frequency_dimensions, num_hidden_dimensions, config):
+def create_gan(num_frequency_dimensions, config):
     # Create generator network
-    generator = create_lstm_network(num_frequency_dimensions, num_hidden_dimensions, config)
+    generator = create_lstm_network(num_frequency_dimensions, config)
     # Create decoder (or "discriminator") network
+    num_hidden_dimensions = config['decoder_hidden_dims']
     inputs = Input(shape=(None, num_frequency_dimensions))
     conv_in = Conv1D(num_hidden_dimensions, kernel_size=2, activation='tanh', padding='same')(inputs)
     avg_pool_1 = AveragePooling1D(pool_size=2)(conv_in)

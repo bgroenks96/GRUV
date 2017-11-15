@@ -23,7 +23,6 @@ parser.add_argument("-b", "--max-batch", default=500, type=int, help="Maximum nu
 parser.add_argument("--skip-validation", action="store_true", help="Do not use cross validation data.")
 parser.add_argument("-n", "--interval", default=10, type=int, help="Number of iterations to run in between retaining saved weights.")
 parser.add_argument("-r", "--run", default=0, type=int, help="Integer id for this run (used for weight files). Defaults to zero.")
-parser.add_argument("--hidden-dims", default=config['hidden_dimension_size'], type=int, help="Number of hidden layer dimensions in the generative network. Higher values require more VRAM.")
 args = parser.parse_args()
 
 sess = tf.Session(config=tf.ConfigProto(log_device_placement=True))
@@ -54,11 +53,10 @@ print('Finished loading training data')
 #Figure out how many frequencies we have in the data
 num_timesteps = X_train.shape[1]
 freq_space_dims = X_train.shape[2]
-hidden_dims = args.hidden_dims
 
 #Creates a Genearative Adverserial Network (GAN) using the normal NuGRUV LSTM network as the generator.
 print('Initializing network...')
-gan = network_utils.create_gan(num_frequency_dimensions=freq_space_dims, num_hidden_dimensions=hidden_dims, config=config)
+gan = network_utils.create_gan(num_frequency_dimensions=freq_space_dims, config=config)
 
 print('Model summary:')
 gan.summary()

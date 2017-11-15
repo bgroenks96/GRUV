@@ -38,7 +38,6 @@ def __main__():
     parser.add_argument("--dataset", default='train', type=str, help='The dataset to draw from. Defaults to "train".')
     parser.add_argument("--output", default='new', type=str, help="Either 'new' (default) for only new generated output, 'gen' to also include the model's reproduction of the seed, or 'all' to also include the raw seed sequence.")
     parser.add_argument("-r", "--run", default=0, type=int, help="Integer id for this run (used for weight files). Defaults to zero.")
-    parser.add_argument("--hidden-dims", default=config['hidden_dimension_size'], type=int, help="Number of hidden layer dimensions.")
     args = parser.parse_args()
 
     sample_frequency = config['sampling_frequency']
@@ -72,11 +71,10 @@ def __main__():
     #Figure out how many frequencies we have in the data
     num_timesteps = X_train.shape[1]
     freq_space_dims = X_train.shape[2]
-    hidden_dims = args.hidden_dims
 
     #Creates a lstm network
     print('Initializing network...')
-    model = network_utils.create_lstm_network(num_frequency_dimensions=freq_space_dims, num_hidden_dimensions=hidden_dims)
+    model = network_utils.create_lstm_network(num_frequency_dimensions=freq_space_dims)
     #model = network_utils.create_noise_network(num_frequency_dimensions=freq_space_dims, num_hidden_dimensions=hidden_dims)
     #You could also substitute this with a RNN or GRU
     #model = network_utils.create_gru_network()
