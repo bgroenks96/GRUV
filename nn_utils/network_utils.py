@@ -20,7 +20,7 @@ def create_lstm_network(num_frequency_dimensions, num_hidden_dimensions, config)
     conv_in = Conv1D(num_hidden_dimensions, kernel_size=2, activation='tanh', padding='causal')(inputs)
     lstm_1 = LSTM(num_hidden_dimensions, return_sequences=True)(GaussianDropout(dropout_rate)(conv_in))
     lstm_2 = LSTM(num_hidden_dimensions, return_sequences=True)(GaussianDropout(dropout_rate)(lstm_1))
-    conv_out = Conv1D(num_frequency_dimensions, kernel_size=2, activation='tanh', padding='causal')(lstm_1)
+    conv_out = Conv1D(num_frequency_dimensions, kernel_size=2, activation='tanh', padding='causal')(lstm_2)
     
     # Convert back to frequency space
     #td_output = TimeDistributed(Dense(num_frequency_dimensions))(lstm_2)
@@ -51,11 +51,13 @@ def create_gan(num_frequency_dimensions, num_hidden_dimensions, config):
     generator = create_lstm_network(num_frequency_dimensions, num_hidden_dimensions, config)
     # Create decoder (or "discriminator") network
     inputs = Input(shape=(None, num_frequency_dimensions))
-    conv_in = Conv1D(num_hidden_dimensions, kernel_size=2, activation='tanh', padding='same', input_shape=(None, num_frequency_dimensions))(inputs)
-    lstm_1 = LSTM(num_hidden_dimensions, activation='tanh', return_sequences=True)(conv_in)
-    lstm_2 = LSTM(num_hidden_dimensions, activation='tanh', return_sequences=True)(lstm_1)
-    td_dense = TimeDistributed(Dense(num_hidden_dimensions, activation='tanh'))(lstm_2)
-    dense_out = Dense(1, activation='sigmoid')(td_dense)
+    conv_in = Conv1D(num_hidden_dimensions, kernel_size=2, activation='tanh', padding='same')(inputs)
+    avg_pool_1 = AveragePooling1D(pool_size=2)(conv_in)
+    conv_hidden_1 = Conv1D(num_hidden_dimensions / 2, kernel_size=2, activation='tanh', padding='same')(avg_pool_1)
+    avg_pool_2 = AveragePooling1D(pool_size=2)(conv_hidden_1)
+    conv_hidden_2 = Conv1D(num_hidden_dimensions / 4, kernel_size=2, activation='tanh', padding='same')(avg_pool_2)
+    lstm = LSTM(num_hidden_dimensions)(conv_hidden_2)
+    dense_out = Dense(1, activation='sigmoid')(lstm)
     decoder = Model(inputs=inputs, outputs=dense_out)
     decoder.compile(loss='binary_crossentropy', optimizer=config['decoder_optimizer'], metrics=['accuracy'])
     # Create GAN (combined model)
@@ -82,13 +84,13 @@ class GAN:
         num_real = X_real.shape[0]
         num_fake = X_fake.shape[0]
         X_train = np.concatenate((X_real, X_fake), axis=0)
-        y_train = np.concatenate((np.ones((num_real, X_train.shape[1], 1)), np.zeros((num_fake, X_train.shape[1], 1))), axis=0)
+        y_train = np.concatenate((np.ones((num_real, 1)), np.zeros((num_fake, 1))), axis=0)
         return self.decoder.fit(X_train, y_train, batch_size=batch_size, epochs=epochs, shuffle=shuffle, verbose=verbose, validation_split=validation_split)
     
     def fit(self, X_train, batch_size=None, epochs=10, shuffle=False, verbose=1, validation_split=0.0):
         num_examples = X_train.shape[0]
         num_timesteps = X_train.shape[1]
-        y_train = np.ones((num_examples, num_timesteps, 1))
+        y_train = np.ones((num_examples, 1))
         self.decoder.trinable = False
         hist = self.model.fit(X_train, y_train, batch_size=batch_size, epochs=epochs, shuffle=shuffle, verbose=verbose, validation_split=validation_split)
         self.decoder.trainable = True
