@@ -52,7 +52,7 @@ freq_space_dims = X_train.shape[2]
 
 #Creates a Genearative Adverserial Network (GAN) using the normal NuGRUV LSTM network as the generator.
 print('Initializing network...')
-gan = network_utils.create_gan(num_frequency_dimensions=freq_space_dims, config=config)
+gan = network_utils.create_autoencoder_gan(num_frequency_dimensions=freq_space_dims, config=config)
 
 print('Model summary:')
 gan.summary()

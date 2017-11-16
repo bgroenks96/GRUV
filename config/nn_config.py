@@ -6,6 +6,7 @@ def get_neural_net_configuration():
 	nn_params['generator_hidden_dims'] = 256
 	nn_params['generator_dropout'] = 0.2
 	nn_params['generator_optimizer'] = 'adam'
+	nn_params['decoder_dropout'] = 0.1
 	nn_params['decoder_optimizer'] = 'adam'
 	nn_params['decoder_hidden_dims'] = 256
 	nn_params['combined_optimizer'] = optimizers.RMSprop(0.0005, decay=0.05)

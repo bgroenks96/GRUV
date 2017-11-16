@@ -41,10 +41,11 @@ print ('Finished loading training data')
 #Figure out how many frequencies we have in the data
 num_timesteps = X_train.shape[1]
 freq_space_dims = X_train.shape[2]
+hidden_dims = config['generator_hidden_dims']
 
 #Creates a lstm network
 print('Initializing network...')
-model = network_utils.create_lstm_network(num_frequency_dimensions=freq_space_dims)
+model = network_utils.create_lstm_network(num_frequency_dimensions=freq_space_dims, num_hidden_dimensions=hidden_dims)
 #You could also substitute this with a RNN or GRU
 #model = network_utils.create_gru_network()
 
