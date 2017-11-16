@@ -82,19 +82,31 @@ class GAN:
         return self.generator.fit(X_train, y_train, batch_size=batch_size, epochs=epochs, shuffle=shuffle, verbose=verbose, validation_data=validation_data)
     
     # Fit the decoder network against the given real and fake X examples. An example output of '1' will be generated for each real example, and '0' for each fake one.
-    def fit_decoder(self, X_real, X_fake, batch_size=None, epochs=10, shuffle=False, verbose=1, validation_split=0.0):
+    def fit_decoder(self, X_real, X_fake, batch_size=None, epochs=10, shuffle=False, verbose=1, validation_data=[]):
         num_real = X_real.shape[0]
         num_fake = X_fake.shape[0]
         X_train = np.concatenate((X_real, X_fake), axis=0)
         y_train = np.concatenate((np.ones((num_real, 1)), np.zeros((num_fake, 1))), axis=0)
-        return self.decoder.fit(X_train, y_train, batch_size=batch_size, epochs=epochs, shuffle=shuffle, verbose=verbose, validation_split=validation_split)
+        val_data = None
+        if len(validation_data) > 0:
+            val_real = validation_data[0]
+            val_fake = validation_data[1]
+            X_val = np.concatenate((val_real, val_fake), axis=0)
+            y_val = np.concatenate((np.ones((val_real.shape[0], 1)), np.zeros((val_fake.shape[0], 1))), axis=0)
+            val_data = (X_val, y_val)
+        return self.decoder.fit(X_train, y_train, batch_size=batch_size, epochs=epochs, shuffle=shuffle, verbose=verbose, validation_data=val_data)
     
-    def fit(self, X_train, batch_size=None, epochs=10, shuffle=False, verbose=1, validation_split=0.0):
+    def fit(self, X_train, batch_size=None, epochs=10, shuffle=False, verbose=1, validation_x=[]):
         num_examples = X_train.shape[0]
         num_timesteps = X_train.shape[1]
         y_train = np.ones((num_examples, 1))
+        val_data = None
+        if len(validation_x) > 0:
+            num_val = validation_x.shape[0]
+            y_val = np.ones((num_val, 1))
+            val_data = (validation_x, y_val)
         self.decoder.trinable = False
-        hist = self.model.fit(X_train, y_train, batch_size=batch_size, epochs=epochs, shuffle=shuffle, verbose=verbose, validation_split=validation_split)
+        hist = self.model.fit(X_train, y_train, batch_size=batch_size, epochs=epochs, shuffle=shuffle, verbose=verbose, validation_data=val_data)
         self.decoder.trainable = True
         return hist
     
