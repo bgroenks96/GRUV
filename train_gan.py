@@ -13,21 +13,22 @@ import argparse
 config = nn_config.get_neural_net_configuration()
 
 parser = argparse.ArgumentParser(description="Train the NuGRUV GAN against the current dataset.")
-parser.add_argument("current_iteration", default=0, type=int, help="Current training iteration to start from.")
-parser.add_argument("num_iterations", default=10, type=int, help='Number of training iterations to run.')
+parser.add_argument("dataset_name", help="Name of the dataset to use for training.")
+parser.add_argument("-s", "--start-tr", default=0, type=int, help="Current training iteration to start from.")
+parser.add_argument("-n", "--num-itrs", default=10, type=int, help='Number of training iterations to run.')
 parser.add_argument("--dec-epochs", default=50, type=int, help="Number of epochs per iteration to train the decoder.")
 parser.add_argument("--gen-epochs", default=25, type=int, help="Number of epochs per iteration of the generator.")
 parser.add_argument("--com-epochs", default=1, type=int, help="Number of epochs per iteration to train the combined GAN model.")
 parser.add_argument("--dec-samples", default=10, type=int, help="Number of samples to generate for the decoder to train against on each iteration.")
 parser.add_argument("-b", "--max-batch", default=500, type=int, help="Maximum number of training examples to batch per gradient update.")
 parser.add_argument("--skip-validation", action="store_true", help="Do not use cross validation data.")
-parser.add_argument("-n", "--interval", default=10, type=int, help="Number of iterations to run in between retaining saved weights.")
+parser.add_argument("-i", "--interval", default=10, type=int, help="Number of iterations to run in between retaining saved weights.")
 parser.add_argument("-r", "--run", default=0, type=int, help="Integer id for this run (used for weight files). Defaults to zero.")
 args = parser.parse_args()
 
 sess = tf.Session(config=tf.ConfigProto(log_device_placement=True))
 
-inputFile = config['model_file']
+input_file = config['dataset_directory'] + args.dataset_name + '/' + args.dataset_name
 cur_iter = args.current_iteration
 dec_basename = config['model_basename'] + str(args.run) + '-Dec_'
 dec_filename = dec_basename + str(cur_iter)
@@ -39,11 +40,11 @@ skip_validation = args.skip_validation
 print('Loading training data')
 #X_train is a tensor of size (num_train_examples, num_timesteps, num_frequency_dims)
 #y_train is a tensor of size (num_train_examples, num_timesteps, num_frequency_dims)
-X_train = np.load(inputFile + '_x.npy')
-y_train = np.load(inputFile + '_y.npy')
+X_train = np.load(input_file + '_x.npy')
+y_train = np.load(input_file + '_y.npy')
 if not skip_validation:
-    X_val = np.load(inputFile + '_val_x.npy')
-    y_val = np.load(inputFile + '_val_y.npy')
+    X_val = np.load(input_file + '_val_x.npy')
+    y_val = np.load(input_file + '_val_y.npy')
 print('Finished loading training data')
 
 #Figure out how many frequencies we have in the data
@@ -127,7 +128,7 @@ def train_decoder(X_train, X_val, sample_size):
     X_train_fake = generate(gan.generator, X_train, max_seq_len=num_timesteps, gen_count=X_train_real.shape[0], include_raw_seed=False, include_model_seed=True, uncenter_data=False)
     X_val_fake = generate(gan.generator, X_val, max_seq_len=num_timesteps, gen_count=X_val_real.shape[0], include_raw_seed=False, include_model_seed=True, uncenter_data=False)
     dec_hist = gan.fit_decoder(X_train_real, X_train_fake, epochs=args.dec_epochs, shuffle=True, verbose=1, validation_data=(X_val_real, X_val_fake))
-    
+
 # Training phase 1: Generator pre-training
 print('Starting training...')
 decoder_data_len = min(args.dec_samples, X_train.shape[0])
@@ -150,7 +151,7 @@ while cur_iter < num_iters:
     gan.fit(X_train, batch_size=batch_size, epochs=args.com_epochs, shuffle=True, verbose=1, validation_x=X_val)
     print('Saving generator weights (post-train) for iteration {0} ...'.format(cur_iter))
     gan.generator.save_weights(gen_basename + str(cur_iter))
-    
+
     # Clean weights from last iteration, if between persistent save intervals
     last_iter = cur_iter - 1
     if last_iter >= 0 and last_iter % args.interval != 0:
@@ -158,8 +159,7 @@ while cur_iter < num_iters:
             os.remove(gen_basename + str(last_iter))
         if os.path.isfile(dec_basename + str(last_iter)):
             os.remove(dec_basename + str(last_iter))
-            
-    cur_iter += 1
-    
-print('Training complete!')
 
+    cur_iter += 1
+
+print('Training complete!')

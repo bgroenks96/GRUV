@@ -12,12 +12,6 @@ def get_neural_net_configuration():
 	nn_params['combined_optimizer'] = optimizers.RMSprop(0.0005, decay=0.05)
 	#The weights filename for saving/loading trained models
 	nn_params['model_basename'] = './NuGruvModelWeights'
-	#The model filename for the training data
-	nn_params['model_file'] = './datasets/train/YourMusicLibraryNP'
 	#The training data directory
-	nn_params['dataset_directory'] = './datasets/train/YourMusicLibrary/'
-	#The model filename of the generation data
-	nn_params['gen_file'] = './datasets/gen/YourMusicLibraryNP'
-	#The generation data directory
-	nn_params['gen_directory'] = './datasets/gen/YourMusicLibrary/'
+	nn_params['dataset_directory'] = './datasets/'
 	return nn_params
