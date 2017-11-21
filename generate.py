@@ -1,17 +1,17 @@
 from __future__ import absolute_import
 from __future__ import print_function
+from data_utils.parse_files import *
 import numpy as np
 import os
 import nn_utils.network_utils as network_utils
 import gen_utils.seed_generator as seed_generator
 import gen_utils.sequence_generator as sequence_generator
-from data_utils.parse_files import *
 import config.nn_config as nn_config
 import argparse
 
 # Generate a new sequence using the given model, seed dataset, and generation parameters.
-def generate(model, x_data, max_seq_len, seed_len=1, gen_count=1, include_raw_seed=False, include_model_seed=False, uncenter_data=False, X_var=None, X_mean=None):
-    print ('Starting generation!')
+def generate_from_data(model, x_data, max_seq_len, seed_len=1, gen_count=1, include_raw_seed=False, include_model_seed=False, uncenter_data=False, X_var=None, X_mean=None):
+    print('Starting generation!')
     #Here's the interesting part
     #We need to create some seed sequence for the algorithm to start with
     #Currently, we just grab an existing seed sequence from our training data and use that
@@ -20,13 +20,19 @@ def generate(model, x_data, max_seq_len, seed_len=1, gen_count=1, include_raw_se
     #There are many, many ways we can pick these seed sequences such as taking linear combinations of certain songs
     #We could even provide a uniformly random sequence, but that is highly unlikely to produce good results
     outputs = []
-    for i in range(gen_count):
+    for i in xrange(gen_count):
         print("Generating sample {0}/{1}".format(i+1, gen_count))
         seed_seq = seed_generator.generate_copy_seed_sequence(seed_length=seed_len, training_data=x_data)
-        output = sequence_generator.generate_from_seed(model, seed_seq, max_seq_len, include_raw_seed, include_model_seed, uncenter_data, X_var, X_mean)
+        output = sequence_generator.generate_from_example_seed(model, seed_seq, max_seq_len, include_raw_seed, include_model_seed, uncenter_data, X_var, X_mean)
         outputs.append(output)
-    return np.array(outputs)
     print('Finished generation!')
+    return np.array(outputs)
+    
+def generate_from_seeds(model, x_seeds, max_seq_len, batch_size=None, uncenter_data=False, X_var=None, X_mean=None):
+    print('Starting generation!')
+    outputs = sequence_generator.generate_from_random_seed(model, x_seeds, max_seq_len, batch_size=batch_size, uncenter_data=uncenter_data, target_mean=X_mean, target_variance=X_var)
+    print('Finished generation!')
+    return np.array(outputs)
     
 def __main__():
     config = nn_config.get_neural_net_configuration()

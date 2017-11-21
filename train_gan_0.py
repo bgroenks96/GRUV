@@ -139,10 +139,10 @@ num_iters = cur_iter + args.num_iterations
 while cur_iter < num_iters:
     # Start training iteration for each model
     print('Iteration: {0}'.format(cur_iter))
-    print('Training generator for {0} epochs (batch size: {1})'.format(args.gen_epochs, batch_size))
-    gen_hist = gan.fit_generator(X_train, y_train, batch_size=batch_size, epochs=args.gen_epochs, shuffle=True, verbose=1, validation_data=val_data)
-    print('Saving generator weights (pre-train) for iteration {0} ...'.format(cur_iter))
-    gan.generator.save_weights(gen_basename + str(cur_iter))
+    #print('Training generator for {0} epochs (batch size: {1})'.format(args.gen_epochs, batch_size))
+    #gen_hist = gan.fit_generator(X_train, y_train, batch_size=batch_size, epochs=args.gen_epochs, shuffle=True, verbose=1, validation_data=val_data)
+    #print('Saving generator weights (pre-train) for iteration {0} ...'.format(cur_iter))
+    #gan.generator.save_weights(gen_basename + str(cur_iter))
     print('Training decoder for {0} epochs with {1} training examples'.format(args.dec_epochs, decoder_data_len))
     dec_hist = train_decoder(X_train, X_val, decoder_data_len)
     print('Saving decoder weights for iteration {0} ...'.format(cur_iter))
