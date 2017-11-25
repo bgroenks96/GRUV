@@ -25,8 +25,8 @@ def generate(model, x_data, max_seq_len, seed_len=1, gen_count=1, include_raw_se
         seed_seq = seed_generator.generate_copy_seed_sequence(seed_length=seed_len, training_data=x_data)
         output = sequence_generator.generate_from_seed(model, seed_seq, max_seq_len, include_raw_seed, include_model_seed, uncenter_data, X_var, X_mean)
         outputs.append(output)
-    return np.array(outputs)
     print('Finished generation!')
+    return np.array(outputs)
     
 def __main__():
     config = nn_config.get_neural_net_configuration()
@@ -74,7 +74,7 @@ def __main__():
 
     #Creates a lstm network
     print('Initializing network...')
-    model = network_utils.create_autoencoding_generator_network(num_frequency_dimensions=freq_space_dims, config=config)
+    model = network_utils.create_autoencoding_generator_network(num_frequency_dimensions=freq_space_dims, config=config, batch_size=1, stateful=True)
     #model = network_utils.create_noise_network(num_frequency_dimensions=freq_space_dims, num_hidden_dimensions=hidden_dims)
     #You could also substitute this with a RNN or GRU
     #model = network_utils.create_gru_network()

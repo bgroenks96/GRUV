@@ -35,6 +35,7 @@ def generate_from_seed(model, seed, max_seq_len, include_raw_seed=False, include
         newSeq = np.reshape(newSeq, (1, 1, newSeq.shape[0]))
         # newSeq += np.random.randn(*newSeq.shape)*0.01
         seedSeq = np.concatenate((seedSeq, newSeq), axis=1)
+        seedSeq = seedSeq[:,1:,:]
 
     if uncenter_data:
         assert len(data_variance) > 0

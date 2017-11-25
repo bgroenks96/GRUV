@@ -30,35 +30,32 @@ def create_noise_network(num_frequency_dimensions, num_hidden_dimensions):
     model.compile(loss='mean_squared_error', optimizer='rmsprop')
     return model
 
-def create_autoencoding_generator_network(num_frequency_dimensions, config):
-    inputs = Input(shape=(None, num_frequency_dimensions))
+def create_autoencoding_generator_network(num_frequency_dimensions, config, batch_size=None, stateful=False):
+    inputs = Input(batch_shape=(batch_size, None, num_frequency_dimensions))
     num_hidden_dimensions = config['generator_hidden_dims']
     dropout = GaussianDropout(config['generator_dropout'])
-    conv_in = Conv1D(num_hidden_dimensions, kernel_size=2, activation='tanh', padding='causal')(inputs)
-    lstm_1 = LSTM(num_hidden_dimensions, return_sequences=True)(dropout(conv_in))
-    lstm_2 = LSTM(num_hidden_dimensions, return_sequences=True)(dropout(lstm_1))
-    conv_out = Conv1D(num_frequency_dimensions, kernel_size=2, activation='tanh', padding='causal')(lstm_2)
+    conv_in = Conv1D(num_hidden_dimensions, kernel_size=2, padding='causal')(inputs)
+    lstm_1 = LSTM(num_hidden_dimensions, return_sequences=True, stateful=stateful)(dropout(conv_in))
+    conv_out = Conv1D(num_frequency_dimensions, kernel_size=2, padding='causal')(lstm_1)
     model = Model(inputs=inputs, outputs=conv_out)
-    model.compile(loss='logcosh', optimizer=config['generator_optimizer'])
+    model.compile(loss='mean_squared_error', optimizer=config['generator_optimizer'])
     return model
 
 def create_decoder_network(num_frequency_dimensions, config):
     num_hidden_dimensions = config['decoder_hidden_dims']
     dropout = GaussianDropout(['decoder_dropout'])
     inputs = Input(shape=(None, num_frequency_dimensions))
-    conv_in = Conv1D(num_hidden_dimensions, kernel_size=2, activation='tanh', padding='same')(inputs)
+    conv_in = Conv1D(num_hidden_dimensions, kernel_size=2, activation='tanh')(inputs)
     avg_pool_1 = AveragePooling1D(pool_size=2)(conv_in)
-    conv_hidden_1 = Conv1D(num_hidden_dimensions / 2, kernel_size=2, activation='tanh', padding='same')(dropout(avg_pool_1))
-    avg_pool_2 = AveragePooling1D(pool_size=2)(conv_hidden_1)
-    conv_hidden_2 = Conv1D(num_hidden_dimensions / 4, kernel_size=2, activation='tanh', padding='same')(dropout(avg_pool_2))
-    lstm = LSTM(num_hidden_dimensions)(dropout(dropout_rate)(conv_hidden_2))
+    lstm = LSTM(num_hidden_dimensions, activation='tanh')(dropout(avg_pool_1))
     dense_out = Dense(1, activation='sigmoid')(lstm)
     decoder = Model(inputs=inputs, outputs=dense_out)
     decoder.compile(loss='binary_crossentropy', optimizer=config['decoder_optimizer'], metrics=['accuracy'])
+    return decoder
 
-def create_autoencoder_gan(num_frequency_dimensions, config):
+def create_autoencoder_gan(num_frequency_dimensions, config, batch_size=None, stateful=False):
     # Create generator network
-    generator = create_autoencoding_generator_network(num_frequency_dimensions, config)
+    generator = create_autoencoding_generator_network(num_frequency_dimensions, config, batch_size, stateful)
     # Create decoder (or "discriminator") network
     decoder = create_decoder_network(num_frequency_dimensions, config)
     # Create GAN (combined model)
@@ -81,7 +78,7 @@ class GAN:
         return self.generator.fit(X_train, y_train, batch_size=batch_size, epochs=epochs, shuffle=shuffle, verbose=verbose, validation_data=validation_data)
     
     # Fit the decoder network against the given real and fake X examples. An example output of '1' will be generated for each real example, and '0' for each fake one.
-    def fit_decoder(self, X_real, X_fake, batch_size=None, epochs=10, shuffle=False, verbose=1, validation_data=[]):
+    def fit_decoder(self, X_real, X_fake, batch_size=None, epochs=10, shuffle=False, verbose=1, callbacks=None, validation_data=[]):
         num_real = X_real.shape[0]
         num_fake = X_fake.shape[0]
         X_train = np.concatenate((X_real, X_fake), axis=0)
@@ -93,7 +90,7 @@ class GAN:
             X_val = np.concatenate((val_real, val_fake), axis=0)
             y_val = np.concatenate((np.ones((val_real.shape[0], 1)), np.zeros((val_fake.shape[0], 1))), axis=0)
             val_data = (X_val, y_val)
-        return self.decoder.fit(X_train, y_train, batch_size=batch_size, epochs=epochs, shuffle=shuffle, verbose=verbose, validation_data=val_data)
+        return self.decoder.fit(X_train, y_train, batch_size=batch_size, epochs=epochs, shuffle=shuffle, verbose=verbose, callbacks=callbacks, validation_data=val_data)
     
     def fit(self, X_train, batch_size=None, epochs=10, shuffle=False, verbose=1, validation_x=[]):
         num_examples = X_train.shape[0]

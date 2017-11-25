@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 from __future__ import print_function
 from generate import generate
+from keras.callbacks import EarlyStopping
 import numpy as np
 import os
 import nn_utils.network_utils as network_utils
@@ -14,13 +15,13 @@ config = nn_config.get_neural_net_configuration()
 
 parser = argparse.ArgumentParser(description="Train the NuGRUV GAN against the current dataset.")
 parser.add_argument("dataset_name", help="Name of the dataset to use for training.")
-parser.add_argument("-s", "--start-tr", default=0, type=int, help="Current training iteration to start from.")
-parser.add_argument("-n", "--num-itrs", default=10, type=int, help='Number of training iterations to run.')
-parser.add_argument("--dec-epochs", default=50, type=int, help="Number of epochs per iteration to train the decoder.")
-parser.add_argument("--gen-epochs", default=25, type=int, help="Number of epochs per iteration of the generator.")
+parser.add_argument("-s", "--start-iter", default=0, type=int, help="Current training iteration to start from.")
+parser.add_argument("-n", "--num-iters", default=10, type=int, help='Number of training iterations to run.')
+parser.add_argument("--dec-epochs", default=10, type=int, help="Number of epochs per iteration to train the decoder.")
+parser.add_argument("--gen-epochs", default=5, type=int, help="Number of epochs per iteration of the generator.")
 parser.add_argument("--com-epochs", default=1, type=int, help="Number of epochs per iteration to train the combined GAN model.")
 parser.add_argument("--dec-samples", default=10, type=int, help="Number of samples to generate for the decoder to train against on each iteration.")
-parser.add_argument("-b", "--max-batch", default=500, type=int, help="Maximum number of training examples to batch per gradient update.")
+parser.add_argument("-b", "--max-batch", default=32, type=int, help="Maximum number of training examples to batch per gradient update.")
 parser.add_argument("--skip-validation", action="store_true", help="Do not use cross validation data.")
 parser.add_argument("-i", "--interval", default=10, type=int, help="Number of iterations to run in between retaining saved weights.")
 parser.add_argument("-r", "--run", default=0, type=int, help="Integer id for this run (used for weight files). Defaults to zero.")
@@ -29,7 +30,7 @@ args = parser.parse_args()
 sess = tf.Session(config=tf.ConfigProto(log_device_placement=True))
 
 input_file = config['dataset_directory'] + args.dataset_name + '/' + args.dataset_name
-cur_iter = args.current_iteration
+cur_iter = args.start_iter
 dec_basename = config['model_basename'] + str(args.run) + '-Dec_'
 dec_filename = dec_basename + str(cur_iter)
 gen_basename = config['model_basename'] + str(args.run) + '_'
@@ -119,23 +120,26 @@ def random_training_examples(X_train, X_val=[], seed_len=1, count=1):
         val_examples = np.concatenate((val_examples, next_example), axis=0)
     return (train_examples, val_examples)
 
-def train_decoder(X_train, X_val, sample_size):
+def train_decoder(X_train, X_val, sample_size, callbacks=None):
     print('Training decoder...')
-    X_train_real, X_val_real = random_training_examples(X_train, X_val, seed_len=1, count=sample_size)
+    X_train_real, X_val_real = random_training_examples(X_train, X_val, seed_len=2, count=sample_size)
     # Generate fake examples from random seeds. To make sure we train the decoder on the same input it will receive from the generator
     # in the combined model, we need to cap the sequence length at 'num_timesteps' (note: this means only the model's reproduction of the seed sequence + 1 num_timesteps
     # will be included in the output; room for further improvement)
+    num_timesteps = X_train_real.shape[1]
+    num_timesteps_val = X_val_real.shape[1]
     X_train_fake = generate(gan.generator, X_train, max_seq_len=num_timesteps, gen_count=X_train_real.shape[0], include_raw_seed=False, include_model_seed=True, uncenter_data=False)
-    X_val_fake = generate(gan.generator, X_val, max_seq_len=num_timesteps, gen_count=X_val_real.shape[0], include_raw_seed=False, include_model_seed=True, uncenter_data=False)
-    dec_hist = gan.fit_decoder(X_train_real, X_train_fake, epochs=args.dec_epochs, shuffle=True, verbose=1, validation_data=(X_val_real, X_val_fake))
+    X_val_fake = generate(gan.generator, X_val, max_seq_len=num_timesteps_val, gen_count=X_val_real.shape[0], include_raw_seed=False, include_model_seed=True, uncenter_data=False)
+    dec_hist = gan.fit_decoder(X_train_real, X_train_fake, epochs=args.dec_epochs, shuffle=True, verbose=1, callbacks=callbacks, validation_data=(X_val_real, X_val_fake))
 
-# Training phase 1: Generator pre-training
+decoder_early_stop = EarlyStopping(monitor='acc', min_delta=0.01, patience=1, verbose=1, mode='max')
+
 print('Starting training...')
 decoder_data_len = min(args.dec_samples, X_train.shape[0])
 # If we're not starting at zero, then bump current iteration up one, assuming we've loaded weights for the starting iteration
 if cur_iter > 0:
     cur_iter += 1
-num_iters = cur_iter + args.num_iterations
+num_iters = cur_iter + args.num_iters
 while cur_iter < num_iters:
     # Start training iteration for each model
     print('Iteration: {0}'.format(cur_iter))
@@ -144,7 +148,7 @@ while cur_iter < num_iters:
     print('Saving generator weights (pre-train) for iteration {0} ...'.format(cur_iter))
     gan.generator.save_weights(gen_basename + str(cur_iter))
     print('Training decoder for {0} epochs with {1} training examples'.format(args.dec_epochs, decoder_data_len))
-    dec_hist = train_decoder(X_train, X_val, decoder_data_len)
+    dec_hist = train_decoder(X_train, X_val, decoder_data_len, callbacks=[decoder_early_stop])
     print('Saving decoder weights for iteration {0} ...'.format(cur_iter))
     gan.decoder.save_weights(dec_basename + str(cur_iter))
     print('Training combined model for {0} epochs'.format(args.com_epochs))
