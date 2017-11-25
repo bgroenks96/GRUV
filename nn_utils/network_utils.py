@@ -1,5 +1,6 @@
 from keras.models import *
 from keras.layers import *
+from keras import initializers
 from keras import optimizers
 import numpy as np
 
@@ -30,34 +31,36 @@ def create_noise_network(num_frequency_dimensions, num_hidden_dimensions):
     model.compile(loss='mean_squared_error', optimizer='rmsprop')
     return model
 
-def create_autoencoding_generator_network(num_frequency_dimensions, config, batch_size=None, stateful=False):
-    inputs = Input(batch_shape=(batch_size, None, num_frequency_dimensions))
+def create_autoencoding_generator_network(num_frequency_dimensions, num_timesteps, config, batch_size=None, stateful=False):
+    inputs = Input(batch_shape=(batch_size, num_timesteps, num_frequency_dimensions))
     num_hidden_dimensions = config['generator_hidden_dims']
-    noise = GaussianNoise(config['generator_noise_sd'])
+    dropout = GaussianDropout(config['generator_dropout'])
     conv_in = Conv1D(num_hidden_dimensions, kernel_size=2, padding='causal')(inputs)
-    lstm_1 = LSTM(num_hidden_dimensions, return_sequences=True, stateful=stateful)(noise(conv_in))
-    conv_out = Conv1D(num_frequency_dimensions, kernel_size=2, padding='causal')(lstm_1)
+    lstm_1 = LSTM(num_hidden_dimensions, return_sequences=True, stateful=stateful)(dropout(conv_in))
+    lstm_2 = LSTM(num_hidden_dimensions, return_sequences=True, stateful=stateful)(dropout(lstm_1))
+    conv_out = Conv1D(num_frequency_dimensions, kernel_size=2, padding='causal')(dropout(lstm_2))
     model = Model(inputs=inputs, outputs=conv_out)
-    model.compile(loss='mean_squared_error', optimizer=config['generator_optimizer'])
+    model.compile(loss='logcosh', optimizer=config['generator_optimizer'])
     return model
 
-def create_decoder_network(num_frequency_dimensions, config):
+def create_decoder_network(num_frequency_dimensions, num_timesteps, config):
     num_hidden_dimensions = config['decoder_hidden_dims']
+    assert num_hidden_dimensions % 2 == 0
     dropout = GaussianDropout(['decoder_dropout'])
-    inputs = Input(shape=(None, num_frequency_dimensions))
-    conv_in = Conv1D(num_hidden_dimensions, kernel_size=2, activation='tanh')(inputs)
-    dense_h0 = Dense(num_hidden_dimensions, activation='tanh')(Flatten()(conv_in))
-    dense_h1 = Dense(hum_hidden_dimensions, activation='tanh')(dropout(dense_h0))
-    dense_out = Dense(1, activation='sigmoid')(dropout(dense_h1))
+    inputs = Input(shape=(num_timesteps, num_frequency_dimensions))
+    conv_in = Conv1D(num_hidden_dimensions, kernel_size=2, activation='tanh', padding='causal')(inputs)
+    dense_h0 = Dense(num_hidden_dimensions / 2, activation='tanh')(Flatten()(dropout(conv_in)))
+    dense_h1 = Dense(num_hidden_dimensions / 4, activation='tanh')(dropout(dense_h1))
+    dense_out = Dense(1, activation='sigmoid')(dropout(dense_h0))
     decoder = Model(inputs=inputs, outputs=dense_out)
     decoder.compile(loss='binary_crossentropy', optimizer=config['decoder_optimizer'], metrics=['accuracy'])
     return decoder
 
-def create_autoencoder_gan(num_frequency_dimensions, config, batch_size=None, stateful=False):
+def create_autoencoder_gan(num_frequency_dimensions, num_timesteps, config, batch_size=None, stateful=False):
     # Create generator network
-    generator = create_autoencoding_generator_network(num_frequency_dimensions, config, batch_size, stateful)
+    generator = create_autoencoding_generator_network(num_frequency_dimensions, num_timesteps, config, batch_size, stateful)
     # Create decoder (or "discriminator") network
-    decoder = create_decoder_network(num_frequency_dimensions, config)
+    decoder = create_decoder_network(num_frequency_dimensions, num_timesteps, config)
     # Create GAN (combined model)
     return GAN(generator, decoder, config)
 
@@ -74,8 +77,8 @@ class GAN:
         self.model = model
     
     # Fit the generator network against the given training data
-    def fit_generator(self, X_train, y_train, batch_size=None, epochs=10, shuffle=False, verbose=1, validation_data=None):
-        return self.generator.fit(X_train, y_train, batch_size=batch_size, epochs=epochs, shuffle=shuffle, verbose=verbose, validation_data=validation_data)
+    def fit_generator(self, X_train, y_train, batch_size=None, epochs=10, shuffle=False, verbose=1, callbacks=None, validation_data=None):
+        return self.generator.fit(X_train, y_train, batch_size=batch_size, epochs=epochs, shuffle=shuffle, verbose=verbose, callbacks=callbacks, validation_data=validation_data)
     
     # Fit the decoder network against the given real and fake X examples. An example output of '1' will be generated for each real example, and '0' for each fake one.
     def fit_decoder(self, X_real, X_fake, batch_size=None, epochs=10, shuffle=False, verbose=1, callbacks=None, validation_data=[]):
@@ -92,7 +95,7 @@ class GAN:
             val_data = (X_val, y_val)
         return self.decoder.fit(X_train, y_train, batch_size=batch_size, epochs=epochs, shuffle=shuffle, verbose=verbose, callbacks=callbacks, validation_data=val_data)
     
-    def fit(self, X_train, batch_size=None, epochs=10, shuffle=False, verbose=1, validation_x=[]):
+    def fit(self, X_train, batch_size=None, epochs=10, shuffle=False, verbose=1, callbacks=None, validation_x=[]):
         num_examples = X_train.shape[0]
         num_timesteps = X_train.shape[1]
         y_train = np.ones((num_examples, 1))
@@ -102,7 +105,7 @@ class GAN:
             y_val = np.ones((num_val, 1))
             val_data = (validation_x, y_val)
         self.decoder.trinable = False
-        hist = self.model.fit(X_train, y_train, batch_size=batch_size, epochs=epochs, shuffle=shuffle, verbose=verbose, validation_data=val_data)
+        hist = self.model.fit(X_train, y_train, batch_size=batch_size, epochs=epochs, shuffle=shuffle, verbose=verbose, callbacks=callbacks, validation_data=val_data)
         self.decoder.trainable = True
         return hist
     

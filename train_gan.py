@@ -1,7 +1,7 @@
 from __future__ import absolute_import
 from __future__ import print_function
 from generate import generate
-from keras.callbacks import EarlyStopping
+from keras.callbacks import EarlyStopping, LambdaCallback
 import numpy as np
 import os
 import nn_utils.network_utils as network_utils
@@ -48,13 +48,17 @@ if not skip_validation:
     y_val = np.load(input_file + '_val_y.npy')
 print('Finished loading training data')
 
+batch_size = X_train.shape[0]
+while batch_size > args.max_batch:
+    batch_size = int(np.ceil(batch_size / 2.0))
+
 #Figure out how many frequencies we have in the data
 num_timesteps = X_train.shape[1]
 freq_space_dims = X_train.shape[2]
 
 #Creates a Genearative Adverserial Network (GAN) using the normal NuGRUV LSTM network as the generator.
 print('Initializing network...')
-gan = network_utils.create_autoencoder_gan(num_frequency_dimensions=freq_space_dims, config=config)
+gan = network_utils.create_autoencoder_gan(freq_space_dims, num_timesteps, config)
 
 print('Model summary:')
 gan.summary()
@@ -66,10 +70,6 @@ if os.path.isfile(dec_filename):
 if os.path.isfile(gen_filename):
     print('Loading existing weight data (Generator) from {}'.format(gen_filename))
     gan.generator.load_weights(gen_filename)
-
-batch_size = X_train.shape[0]
-while batch_size > args.max_batch:
-    batch_size = int(np.ceil(batch_size / 2.0))
 
 # Deprecated, dynamic validation splitting. Incurs a lot of additional computational overhead per training recurrent_units
 # ...
@@ -128,11 +128,11 @@ def train_decoder(X_train, X_val, sample_size, callbacks=None):
     # will be included in the output; room for further improvement)
     num_timesteps = X_train_real.shape[1]
     num_timesteps_val = X_val_real.shape[1]
-    X_train_fake = generate(gan.generator, X_train, max_seq_len=2*num_timesteps, gen_count=X_train_real.shape[0], include_raw_seed=False, include_model_seed=False, uncenter_data=False)
-    X_val_fake = generate(gan.generator, X_val, max_seq_len=2*num_timesteps_val, gen_count=X_val_real.shape[0], include_raw_seed=False, include_model_seed=False, uncenter_data=False)
+    X_train_fake = generate(gan.generator, X_train, max_seq_len=num_timesteps, gen_count=X_train_real.shape[0], include_raw_seed=False, include_model_seed=False, uncenter_data=False)
+    X_val_fake = generate(gan.generator, X_val, max_seq_len=num_timesteps_val, gen_count=X_val_real.shape[0], include_raw_seed=False, include_model_seed=False, uncenter_data=False)
     dec_hist = gan.fit_decoder(X_train_real, X_train_fake, epochs=args.dec_epochs, shuffle=True, verbose=1, callbacks=callbacks, validation_data=(X_val_real, X_val_fake))
 
-decoder_early_stop = EarlyStopping(monitor='acc', min_delta=0.01, patience=1, verbose=1, mode='max')
+early_stop = EarlyStopping(monitor='acc', min_delta=0.01, patience=1, verbose=1, mode='max')
 
 print('Starting training...')
 decoder_data_len = min(args.dec_samples, X_train.shape[0])
@@ -148,11 +148,11 @@ while cur_iter < num_iters:
     print('Saving generator weights (pre-train) for iteration {0} ...'.format(cur_iter))
     gan.generator.save_weights(gen_basename + str(cur_iter))
     print('Training decoder for {0} epochs with {1} training examples'.format(args.dec_epochs, decoder_data_len))
-    dec_hist = train_decoder(X_train, X_val, decoder_data_len, callbacks=[decoder_early_stop])
+    dec_hist = train_decoder(X_train, X_val, decoder_data_len, callbacks=[early_stop])
     print('Saving decoder weights for iteration {0} ...'.format(cur_iter))
     gan.decoder.save_weights(dec_basename + str(cur_iter))
     print('Training combined model for {0} epochs'.format(args.com_epochs))
-    gan.fit(X_train, batch_size=batch_size, epochs=args.com_epochs, shuffle=True, verbose=1, validation_x=X_val)
+    gan.fit(X_train, batch_size=batch_size, epochs=args.com_epochs, shuffle=True, verbose=1, callbacks=[early_stop], validation_x=X_val)
     print('Saving generator weights (post-train) for iteration {0} ...'.format(cur_iter))
     gan.generator.save_weights(gen_basename + str(cur_iter))
 
