@@ -33,9 +33,9 @@ def create_noise_network(num_frequency_dimensions, num_hidden_dimensions):
 def create_autoencoding_generator_network(num_frequency_dimensions, config, batch_size=None, stateful=False):
     inputs = Input(batch_shape=(batch_size, None, num_frequency_dimensions))
     num_hidden_dimensions = config['generator_hidden_dims']
-    dropout = GaussianDropout(config['generator_dropout'])
+    noise = GaussianNoise(config['generator_noise_sd'])
     conv_in = Conv1D(num_hidden_dimensions, kernel_size=2, padding='causal')(inputs)
-    lstm_1 = LSTM(num_hidden_dimensions, return_sequences=True, stateful=stateful)(dropout(conv_in))
+    lstm_1 = LSTM(num_hidden_dimensions, return_sequences=True, stateful=stateful)(noise(conv_in))
     conv_out = Conv1D(num_frequency_dimensions, kernel_size=2, padding='causal')(lstm_1)
     model = Model(inputs=inputs, outputs=conv_out)
     model.compile(loss='mean_squared_error', optimizer=config['generator_optimizer'])
@@ -46,9 +46,9 @@ def create_decoder_network(num_frequency_dimensions, config):
     dropout = GaussianDropout(['decoder_dropout'])
     inputs = Input(shape=(None, num_frequency_dimensions))
     conv_in = Conv1D(num_hidden_dimensions, kernel_size=2, activation='tanh')(inputs)
-    avg_pool_1 = AveragePooling1D(pool_size=2)(conv_in)
-    lstm = LSTM(num_hidden_dimensions, activation='tanh')(dropout(avg_pool_1))
-    dense_out = Dense(1, activation='sigmoid')(lstm)
+    dense_h0 = Dense(num_hidden_dimensions, activation='tanh')(Flatten()(conv_in))
+    dense_h1 = Dense(hum_hidden_dimensions, activation='tanh')(dropout(dense_h0))
+    dense_out = Dense(1, activation='sigmoid')(dropout(dense_h1))
     decoder = Model(inputs=inputs, outputs=dense_out)
     decoder.compile(loss='binary_crossentropy', optimizer=config['decoder_optimizer'], metrics=['accuracy'])
     return decoder

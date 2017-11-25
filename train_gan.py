@@ -122,14 +122,14 @@ def random_training_examples(X_train, X_val=[], seed_len=1, count=1):
 
 def train_decoder(X_train, X_val, sample_size, callbacks=None):
     print('Training decoder...')
-    X_train_real, X_val_real = random_training_examples(X_train, X_val, seed_len=2, count=sample_size)
+    X_train_real, X_val_real = random_training_examples(X_train, X_val, seed_len=1, count=sample_size)
     # Generate fake examples from random seeds. To make sure we train the decoder on the same input it will receive from the generator
     # in the combined model, we need to cap the sequence length at 'num_timesteps' (note: this means only the model's reproduction of the seed sequence + 1 num_timesteps
     # will be included in the output; room for further improvement)
     num_timesteps = X_train_real.shape[1]
     num_timesteps_val = X_val_real.shape[1]
-    X_train_fake = generate(gan.generator, X_train, max_seq_len=num_timesteps, gen_count=X_train_real.shape[0], include_raw_seed=False, include_model_seed=True, uncenter_data=False)
-    X_val_fake = generate(gan.generator, X_val, max_seq_len=num_timesteps_val, gen_count=X_val_real.shape[0], include_raw_seed=False, include_model_seed=True, uncenter_data=False)
+    X_train_fake = generate(gan.generator, X_train, max_seq_len=2*num_timesteps, gen_count=X_train_real.shape[0], include_raw_seed=False, include_model_seed=False, uncenter_data=False)
+    X_val_fake = generate(gan.generator, X_val, max_seq_len=2*num_timesteps_val, gen_count=X_val_real.shape[0], include_raw_seed=False, include_model_seed=False, uncenter_data=False)
     dec_hist = gan.fit_decoder(X_train_real, X_train_fake, epochs=args.dec_epochs, shuffle=True, verbose=1, callbacks=callbacks, validation_data=(X_val_real, X_val_fake))
 
 decoder_early_stop = EarlyStopping(monitor='acc', min_delta=0.01, patience=1, verbose=1, mode='max')
