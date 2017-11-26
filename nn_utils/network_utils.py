@@ -38,7 +38,9 @@ def create_autoencoding_generator_network(num_frequency_dimensions, num_timestep
     conv_in = Conv1D(num_hidden_dimensions, kernel_size=2, padding='causal')(inputs)
     lstm_1 = LSTM(num_hidden_dimensions, return_sequences=True, stateful=stateful)(dropout(conv_in))
     lstm_2 = LSTM(num_hidden_dimensions, return_sequences=True, stateful=stateful)(dropout(lstm_1))
-    conv_out = Conv1D(num_frequency_dimensions, kernel_size=2, padding='causal')(dropout(lstm_2))
+    lstm_3 = LSTM(num_hidden_dimensions, return_sequences=True, stateful=stateful)(dropout(lstm_2))
+    td_dense = TimeDistributed(Dense(num_hidden_dimensions))(lstm_3)
+    conv_out = Conv1D(num_frequency_dimensions, kernel_size=2, padding='causal')(dropout(td_dense))
     model = Model(inputs=inputs, outputs=conv_out)
     model.compile(loss='logcosh', optimizer=config['generator_optimizer'])
     return model
@@ -50,6 +52,7 @@ def create_decoder_network(num_frequency_dimensions, num_timesteps, config):
     inputs = Input(shape=(num_timesteps, num_frequency_dimensions))
     conv_in = Conv1D(num_hidden_dimensions, kernel_size=2, activation='tanh', padding='causal')(inputs)
     dense_h0 = TimeDistributed(Dense(num_hidden_dimensions, activation='tanh'))(conv_in)
+    dense_h1 = TimeDistributed(Dense(num_hidden_dimensions, activation='tanh'))(conv_in)
     lstm = LSTM(num_hidden_dimensions, return_sequences=False, activation='tanh')(dropout(dense_h0))
     dense_out = Dense(1, activation='sigmoid')(dropout(lstm))
     decoder = Model(inputs=inputs, outputs=dense_out)
