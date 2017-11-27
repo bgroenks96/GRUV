@@ -10,3 +10,7 @@ def generate_copy_seed_sequence(seed_length, training_data):
     seedSeq = np.reshape(randSeed, (1, randSeed.shape[0], randSeed.shape[1]))
     return seedSeq
 
+# Generates a random seed from a Guassian centered at 'mean' wtih standard deviation 'std'
+# with 'seed_length' timesteps and 'seed_width' dimensions.
+def generate_random_seed(seed_width, seed_length=1, mean=0.0, std=1.0):
+    return np.random.normal(loc=mean, scale=std, shape=(1, seed_length, seed_width))
