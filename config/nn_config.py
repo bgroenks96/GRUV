@@ -8,7 +8,7 @@ def get_neural_net_configuration():
 	nn_params['generator_optimizer'] = 'adam'
 	nn_params['decoder_dropout'] = 0.2
 	nn_params['decoder_optimizer'] = 'adam'
-	nn_params['decoder_hidden_dims'] = 128
+	nn_params['decoder_hidden_dims'] = 32
 	nn_params['combined_optimizer'] = 'adamax'
 	#The weights filename for saving/loading trained models
 	nn_params['model_basename'] = './NuGruvModelWeights'

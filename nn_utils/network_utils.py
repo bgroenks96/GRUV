@@ -10,14 +10,13 @@ def create_deconvolutional_generator_network(seed_size, batch_size, num_frequenc
     assert num_timesteps % 2 == 0
     inputs = Input(batch_shape=(batch_size, 1, seed_size))
     num_hidden_dimensions = config['generator_hidden_dims']
-    upsample_input = UpSampling1D(size=num_timesteps)
-    upsample_2x = UpSampling1D(size=2)
-    conv_1 = Conv1D(num_hidden_dimensions, kernel_size=2, padding='causal')(upsample_input(inputs))
-    lstm_1 = LSTM(num_hidden_dimensions, stateful=stateful, return_sequences=True)(conv_1)
-    #conv_2 = Conv1D(num_hidden_dimensions, kernel_size=2, activation='tanh', padding='causal')(upsample_2x(lstm_1))
-    #lstm_2 = LSTM(num_hidden_dimensions, stateful=stateful, activation='tanh', return_sequences=True)(conv_2)
-    td_dense = TimeDistributed(Dense(num_frequency_dimensions))(lstm_1)
-    model = Model(inputs=inputs, outputs=td_dense)
+    upsample = UpSampling1D(size=num_timesteps)
+    td_dense_1 = TimeDistributed(Dense(num_hidden_dimensions))(upsample(inputs))
+    lstm_1 = LSTM(num_hidden_dimensions, stateful=stateful, return_sequences=True)(td_dense_1)
+    td_dense_2 = TimeDistributed(Dense(num_frequency_dimensions))(lstm_1)
+    lstm_2 = LSTM(num_hidden_dimensions, stateful=stateful, return_sequences=True)(td_dense_2)
+    conv_1 = Conv1D(num_frequency_dimensions, kernel_size=2, padding='causal')(lstm_2)
+    model = Model(inputs=inputs, outputs=conv_1)
     model.compile(loss='logcosh', optimizer=config['generator_optimizer'])
     return model
 
@@ -38,15 +37,13 @@ def create_autoencoding_generator_network(num_frequency_dimensions, num_timestep
 
 # Convolutional decoder network for GAN. Convolves the input signal through multiple 1D layers before squashing
 # into a single score for how 'real' or 'fake' the signal looks.
-def create_decoder_network(num_frequency_dimensions, num_timesteps, config):
+def create_decoder_network(num_frequency_dimensions, num_timesteps, config, batch_size=None):
     num_hidden_dimensions = config['decoder_hidden_dims']
     assert num_hidden_dimensions % 2 == 0
     dropout = GaussianDropout(['decoder_dropout'])
-    inputs = Input(shape=(num_timesteps, num_frequency_dimensions))
+    inputs = Input(batch_shape=(batch_size, num_timesteps, num_frequency_dimensions))
     conv_in = Conv1D(num_hidden_dimensions, kernel_size=2, activation='tanh', padding='causal')(inputs)
-    dense_h0 = TimeDistributed(Dense(num_hidden_dimensions, activation='tanh'))(conv_in)
-    dense_h1 = TimeDistributed(Dense(num_hidden_dimensions, activation='tanh'))(conv_in)
-    lstm = LSTM(num_hidden_dimensions, return_sequences=False, activation='tanh')(dropout(dense_h0))
+    lstm = LSTM(num_hidden_dimensions, return_sequences=False, activation='tanh')(dropout(conv_in))
     dense_out = Dense(1, activation='sigmoid')(dropout(lstm))
     decoder = Model(inputs=inputs, outputs=dense_out)
     decoder.compile(loss='binary_crossentropy', optimizer=config['decoder_optimizer'], metrics=['accuracy'])
@@ -65,7 +62,7 @@ def create_deconvolutional_gan(seed_size, batch_size, num_frequency_dimensions, 
     # Create generator network
     generator = create_deconvolutional_generator_network(seed_size, batch_size, num_frequency_dimensions, num_timesteps, config, stateful)
     # Create decoder (or "discriminator") network
-    decoder = create_decoder_network(num_frequency_dimensions, config, batch_size=batch_size)
+    decoder = create_decoder_network(num_frequency_dimensions, num_timesteps, config, batch_size=batch_size)
     # Create GAN (combined model)
     return GAN(generator, decoder, config)
 

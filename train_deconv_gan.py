@@ -1,7 +1,7 @@
 from __future__ import absolute_import
 from __future__ import print_function
 from generate import generate_from_seeds
-from keras.callbacks import LambdaCallback
+from keras.callbacks import EarlyStopping, LambdaCallback
 import numpy as np
 import os
 import nn_utils.network_utils as network_utils
@@ -123,18 +123,21 @@ def random_training_examples(X_train, X_val=[], seed_len=1, train_count=1, val_c
         val_examples = np.concatenate((val_examples, next_example), axis=0)
     return (train_examples, val_examples)
 
-def train_decoder(X_train, X_val):
+def train_decoder(X_train, X_val, callbacks=[]):
     print('Training decoder...')
     train_seeds = generate_random_seeds(seed_dims=(batch_size, 1, args.seed_dims), repeat_count=args.batch_repeat)
     val_seeds = generate_random_seeds(seed_dims=(batch_size, 1, args.seed_dims), repeat_count=args.batch_repeat)
+    print(train_seeds.shape)
+    print(val_seeds.shape)
     X_train_real, X_val_real = random_training_examples(X_train, X_val, seed_len=1, train_count=batch_size*args.batch_repeat, val_count=batch_size*args.batch_repeat)
     X_train_fake = generate_from_seeds(gan.generator, train_seeds, max_seq_len=num_timesteps, batch_size=batch_size, uncenter_data=False)
     X_val_fake = generate_from_seeds(gan.generator, val_seeds, max_seq_len=num_timesteps, batch_size=batch_size, uncenter_data=False)
     print(X_train_real.shape)
     print(X_train_fake.shape)
-    dec_hist = gan.fit_decoder(X_train_real, X_train_fake, batch_size=batch_size, epochs=args.dec_epochs, shuffle=False, verbose=1, validation_data=(X_val_real, X_val_fake))
+    dec_hist = gan.fit_decoder(X_train_real, X_train_fake, batch_size=batch_size, epochs=args.dec_epochs, shuffle=False, verbose=1, callbacks=callbacks, validation_data=(X_val_real, X_val_fake))
     
 reset_states_callback = LambdaCallback(on_epoch_end=lambda epoch,logs: gan.generator.reset_states())
+early_stop = EarlyStopping(monitor='acc', min_delta=0.01, patience=1, verbose=1, mode='max')
     
 # Training phase 1: Generator pre-training
 print('Starting training...')
@@ -148,17 +151,17 @@ while cur_iter < num_iters:
     train_seeds = generate_random_seeds(seed_dims=(batch_size, 1, args.seed_dims), repeat_count=args.batch_repeat)
     val_seeds = None
     if not args.skip_validation:
-        val_seeds = generate_random_seeds(seed_dims=(batch_size, 1, args.seed_dims), repeat_count=2)
+        val_seeds = generate_random_seeds(seed_dims=(batch_size, 1, args.seed_dims), repeat_count=args.batch_repeat)
     #print('Training generator for {0} epochs (batch size: {1})'.format(args.gen_epochs, batch_size))
     #gen_hist = gan.fit_generator(X_train, y_train, batch_size=batch_size, epochs=args.gen_epochs, shuffle=True, verbose=1, validation_data=val_data)
     #print('Saving generator weights (pre-train) for iteration {0} ...'.format(cur_iter))
     #gan.generator.save_weights(gen_basename + str(cur_iter))
     print('Training decoder for {0} epochs'.format(args.dec_epochs))
-    dec_hist = train_decoder(X_train, X_val)
+    dec_hist = train_decoder(X_train, X_val, callbacks=[early_stop])
     print('Saving decoder weights for iteration {0} ...'.format(cur_iter))
     gan.decoder.save_weights(dec_basename + str(cur_iter))
     print('Training combined model for {0} epochs'.format(args.gen_epochs))
-    gan.fit(train_seeds, batch_size=batch_size, epochs=args.gen_epochs, shuffle=False, verbose=1, validation_x=val_seeds)
+    gan.fit(train_seeds, batch_size=batch_size, epochs=args.gen_epochs, shuffle=False, verbose=1, callbacks=[early_stop], validation_x=val_seeds)
     print('Saving generator weights (post-train) for iteration {0} ...'.format(cur_iter))
     gan.generator.save_weights(gen_basename + str(cur_iter))
     
