@@ -7,16 +7,19 @@ import numpy as np
 # Prototype gneerator network that deconvolves a frequency domain signal with 'num_frequency_dimensions' and 'num_timesteps'
 # from a random seed of size 'seed_size'.
 def create_deconvolutional_generator_network(seed_size, batch_size, num_frequency_dimensions, num_timesteps, config, stateful=True):
-    assert num_timesteps % 2 == 0
+    assert num_timesteps % 4 == 0
     inputs = Input(batch_shape=(batch_size, 1, seed_size))
     num_hidden_dimensions = config['generator_hidden_dims']
-    upsample = UpSampling1D(size=num_timesteps)
-    td_dense_1 = TimeDistributed(Dense(num_hidden_dimensions))(upsample(inputs))
-    lstm_1 = LSTM(num_hidden_dimensions, stateful=stateful, return_sequences=True)(td_dense_1)
-    td_dense_2 = TimeDistributed(Dense(num_frequency_dimensions))(lstm_1)
-    lstm_2 = LSTM(num_hidden_dimensions, stateful=stateful, return_sequences=True)(td_dense_2)
-    conv_1 = Conv1D(num_frequency_dimensions, kernel_size=2, padding='causal')(lstm_2)
-    model = Model(inputs=inputs, outputs=conv_1)
+    upsample_2x = UpSampling1D(size=2)
+    conv_in = Conv1D(num_hidden_dimensions, kernel_size=2, padding='causal')(upsample_2x(inputs))
+    lstm_1 = LSTM(num_hidden_dimensions, stateful=stateful, return_sequences=True)(conv_in)
+    conv_h1 = Conv1D(num_hidden_dimensions, kernel_size=2, padding='causal')(upsample_2x(inputs))
+    lstm_2 = LSTM(num_hidden_dimensions, stateful=stateful, return_sequences=True)(conv_h1)
+    conv_h2 = Conv1D(num_hidden_dimensions, kernel_size=2, padding='causal')(UpSampling1D(size=num_timesteps/4)(lstm_2))
+    lstm_3 = LSTM(num_hidden_dimensions, stateful=stateful, return_sequences=True)(conv_h2)
+    td_dense_h1 = TimeDistributed(Dense(num_hidden_dimensions))(lstm_3)
+    conv_out = Conv1D(num_frequency_dimensions, kernel_size=2, padding='causal')(td_dense_h1)
+    model = Model(inputs=inputs, outputs=conv_out)
     model.compile(loss='logcosh', optimizer=config['generator_optimizer'])
     return model
 
@@ -43,7 +46,8 @@ def create_decoder_network(num_frequency_dimensions, num_timesteps, config, batc
     dropout = GaussianDropout(['decoder_dropout'])
     inputs = Input(batch_shape=(batch_size, num_timesteps, num_frequency_dimensions))
     conv_in = Conv1D(num_hidden_dimensions, kernel_size=2, activation='tanh', padding='causal')(inputs)
-    lstm = LSTM(num_hidden_dimensions, return_sequences=False, activation='tanh')(dropout(conv_in))
+    td_dense_0 = TimeDistributed(Dense(num_hidden_dimensions, activation='tanh'))(conv_in)
+    lstm = LSTM(num_hidden_dimensions, return_sequences=False, activation='tanh')(dropout(td_dense_0))
     dense_out = Dense(1, activation='sigmoid')(dropout(lstm))
     decoder = Model(inputs=inputs, outputs=dense_out)
     decoder.compile(loss='binary_crossentropy', optimizer=config['decoder_optimizer'], metrics=['accuracy'])
