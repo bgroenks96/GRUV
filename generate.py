@@ -50,7 +50,7 @@ def __main__():
     if args.model == 'aegan':
         config = nn_config.get_autoencoder_gan_configuration()
     elif args.model == 'dgan':
-        config = nn_config_get_deconv_gan_configuration()
+        config = nn_config.get_deconv_gan_configuration()
     elif args.model == 'lstm':
         config = nn_config.get_default_configuration()
     else:
