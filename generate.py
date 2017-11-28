@@ -112,7 +112,7 @@ def __main__():
         x_seeds = np.random.uniform(low=-1, high=1, size=(gen_count,1,256))
         outputs = generate_from_seeds(model, x_seeds, max_seq_len=seq_len, batch_size=1, uncenter_data=True, X_mean=X_mean, X_var=X_var)
     else:
-        outputs = generate(model, X_train, seq_len, seed_len=args.seedlen, gen_count=gen_count, include_raw_seed=include_raw_seed, include_model_seed=include_model_seed, uncenter_data=True, X_var=X_var, X_mean=X_mean)
+        outputs = generate_from_data(model, X_train, seq_len, seed_len=args.seedlen, gen_count=gen_count, include_raw_seed=include_raw_seed, include_model_seed=include_model_seed, uncenter_data=True, X_var=X_var, X_mean=X_mean)
 
     for i in xrange(gen_count):
         #Save the generated sequence to a WAV file
