@@ -3,16 +3,16 @@ import config.nn_config as nn_config
 
 import argparse
 
-parser = argparse.ArgumentParser(description="Convert MP3 files to WAV and prepare training data.")
+parser = argparse.ArgumentParser(description="Convert MP3 files to WAV and prepare training data. Audio data should be placed in ./datasets/<set-name>/audio/")
 parser.add_argument("name", type=str, help="Name of the dataset; should match the name of the directory in './datasets'")
 parser.add_argument("-v", "--validation", default=0.2, type=float, help="Validation split. Defaults to 0.2")
 parser.add_argument("--skip-conv", action='store_true', default=False, help="Skip conversion to WAV and just generate data. This assumes the WAV files are already present.")
+parser.add_argument("--sample-freq", default=44100, type=int, help="Sampling frequency in Hz")
 args = parser.parse_args()
 
-config = nn_config.get_neural_net_configuration()
-input_directory = config['dataset_directory'] + args.name
+input_directory = '{0}/{1}/audio/'.format('datasets', args.name)
 
-freq = config['sampling_frequency'] #sample frequency in Hz
+freq = args.sample_freq #sample frequency in Hz
 clip_len = 10 		#length of clips for training. Defined in seconds
 block_size = freq / 4 #block sizes used for training - this defines the size of our input state
 max_seq_len = int(round((freq * clip_len) / block_size)) #Used later for zero-padding song sequences
