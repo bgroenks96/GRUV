@@ -146,7 +146,7 @@ class GAN:
             num_val = validation_x.shape[0]
             y_val = np.ones((num_val, 1))
             val_data = (validation_x, y_val)
-        self.decoder.trinable = False
+        self.decoder.trainable = False
         hist = self.model.fit(X_train, y_train, batch_size=batch_size, epochs=epochs, shuffle=shuffle, verbose=verbose, callbacks=callbacks, validation_data=val_data)
         self.decoder.trainable = True
         return hist
