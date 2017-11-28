@@ -87,11 +87,14 @@ def __main__():
 
     #Creates a lstm network
     print('Initializing network...')
-    model = network_utils.create_deconvolutional_generator_network(256, 1, freq_space_dims, num_timesteps, config, stateful=True)
-    #model = network_utils.create_autoencoding_generator_network(num_frequency_dimensions=freq_space_dims, config=config)
-    #model = network_utils.create_noise_network(num_frequency_dimensions=freq_space_dims, num_hidden_dimensions=hidden_dims)
-    #You could also substitute this with a RNN or GRU
-    #model = network_utils.create_gru_network()
+    if args.model == 'aegan':
+        model = network_utils.create_autoencoding_generator_network(num_frequency_dimensions=freq_space_dims, num_timesteps=num_timesteps, config=config)
+    elif args.model == 'dgan':
+        model = network_utils.create_deconvolutional_generator_network(256, 1, freq_space_dims, num_timesteps, config, stateful=True)
+    elif args.model == 'lstm':
+        model = network_utils.create_lstm_network(freq_space_dims, config['generator_hidden_dims'])
+    else:
+        raise(Exception('invalid model type'))
 
     print('Model summary:')
     model.summary()
@@ -104,10 +107,13 @@ def __main__():
         print('Model filename ' + model_filename + ' could not be found!')
 
     seq_len = args.seqlen; #Defines how long the final generated song is. Total song length in samples = seq_len * example_len
+    
+    if args.model == 'dgan':
+        x_seeds = np.random.uniform(low=-1, high=1, size=(gen_count,1,256))
+        outputs = generate_from_seeds(model, x_seeds, max_seq_len=seq_len, batch_size=1, uncenter_data=True, X_mean=X_mean, X_var=X_var)
+    else:
+        outputs = generate(model, X_train, seq_len, seed_len=args.seedlen, gen_count=gen_count, include_raw_seed=include_raw_seed, include_model_seed=include_model_seed, uncenter_data=True, X_var=X_var, X_mean=X_mean)
 
-    x_seeds = np.random.uniform(low=-1, high=1, size=(1,1,256))
-    outputs = generate_from_seeds(model, x_seeds, max_seq_len=seq_len, batch_size=1, uncenter_data=True, X_mean=X_mean, X_var=X_var)
-    #outputs = generate(model, X_train, seq_len, seed_len=args.seedlen, gen_count=gen_count, include_raw_seed=include_raw_seed, include_model_seed=include_model_seed, uncenter_data=True, X_var=X_var, X_mean=X_mean)
     for i in xrange(gen_count):
         #Save the generated sequence to a WAV file
         save_generated_example('{0}_{1}.wav'.format(output_filename, i), outputs[i], sample_frequency=sample_frequency)
