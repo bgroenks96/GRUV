@@ -1,6 +1,6 @@
 from __future__ import absolute_import
 from __future__ import print_function
-from generate import generate
+from generate import generate_from_data
 from keras.callbacks import EarlyStopping, LambdaCallback
 import numpy as np
 import os
@@ -11,7 +11,7 @@ import gen_utils.sequence_generator as sequence_generator
 import tensorflow as tf
 import argparse
 
-config = nn_config.get_neural_net_configuration()
+config = nn_config.get_autoencoder_gan_configuration()
 
 parser = argparse.ArgumentParser(description="Train the NuGRUV GAN against the current dataset.")
 parser.add_argument("dataset_name", help="Name of the dataset to use for training.")
@@ -128,8 +128,8 @@ def train_decoder(X_train, X_val, sample_size, callbacks=None):
     # will be included in the output; room for further improvement)
     num_timesteps = X_train_real.shape[1]
     num_timesteps_val = X_val_real.shape[1]
-    X_train_fake = generate(gan.generator, X_train, max_seq_len=num_timesteps, gen_count=X_train_real.shape[0], include_raw_seed=False, include_model_seed=False, uncenter_data=False)
-    X_val_fake = generate(gan.generator, X_val, max_seq_len=num_timesteps_val, gen_count=X_val_real.shape[0], include_raw_seed=False, include_model_seed=False, uncenter_data=False)
+    X_train_fake = generate_from_data(gan.generator, X_train, max_seq_len=num_timesteps, gen_count=X_train_real.shape[0], include_raw_seed=False, include_model_seed=False, uncenter_data=False)
+    X_val_fake = generate_from_data(gan.generator, X_val, max_seq_len=num_timesteps_val, gen_count=X_val_real.shape[0], include_raw_seed=False, include_model_seed=False, uncenter_data=False)
     dec_hist = gan.fit_decoder(X_train_real, X_train_fake, epochs=args.dec_epochs, shuffle=True, verbose=1, callbacks=callbacks, validation_data=(X_val_real, X_val_fake))
 
 early_stop = EarlyStopping(monitor='acc', min_delta=0.01, patience=1, verbose=1, mode='max')
@@ -143,10 +143,10 @@ num_iters = cur_iter + args.num_iters
 while cur_iter < num_iters:
     # Start training iteration for each model
     print('Iteration: {0}'.format(cur_iter))
-    #print('Training generator for {0} epochs (batch size: {1})'.format(args.gen_epochs, batch_size))
-    #gen_hist = gan.fit_generator(X_train, y_train, batch_size=batch_size, epochs=args.gen_epochs, shuffle=True, verbose=1, validation_data=val_data)
-    #print('Saving generator weights (pre-train) for iteration {0} ...'.format(cur_iter))
-    #gan.generator.save_weights(gen_basename + str(cur_iter))
+    print('Training generator for {0} epochs (batch size: {1})'.format(args.gen_epochs, batch_size))
+    gen_hist = gan.fit_generator(X_train, y_train, batch_size=batch_size, epochs=args.gen_epochs, shuffle=True, verbose=1, validation_data=val_data)
+    print('Saving generator weights (pre-train) for iteration {0} ...'.format(cur_iter))
+    gan.generator.save_weights(gen_basename + str(cur_iter))
     print('Training decoder for {0} epochs with {1} training examples'.format(args.dec_epochs, decoder_data_len))
     dec_hist = train_decoder(X_train, X_val, decoder_data_len, callbacks=[early_stop])
     print('Saving decoder weights for iteration {0} ...'.format(cur_iter))

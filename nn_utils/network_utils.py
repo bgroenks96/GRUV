@@ -39,15 +39,20 @@ def create_autoencoding_generator_network(num_frequency_dimensions, num_timestep
     return model
 
 # Convolutional decoder network for GAN. Convolves the input signal through multiple 1D layers before squashing
-# into a single score for how 'real' or 'fake' the signal looks.
+# into a single score for how 'real' or 'fake' the signal looks. The number of timesteps must be even.
 def create_decoder_network(num_frequency_dimensions, num_timesteps, config, batch_size=None):
     num_hidden_dimensions = config['decoder_hidden_dims']
-    assert num_hidden_dimensions % 2 == 0
+    assert num_timesteps % 2 == 0
     dropout = GaussianDropout(['decoder_dropout'])
     inputs = Input(batch_shape=(batch_size, num_timesteps, num_frequency_dimensions))
     conv_in = Conv1D(num_hidden_dimensions, kernel_size=2, activation='tanh', padding='causal')(inputs)
-    td_dense_0 = TimeDistributed(Dense(num_hidden_dimensions, activation='tanh'))(conv_in)
-    lstm = LSTM(num_hidden_dimensions, return_sequences=False, activation='tanh')(dropout(td_dense_0))
+    conv_h0 = Conv1D(num_hidden_dimensions, kernel_size=2, activation='tanh', padding='causal')(AveragePooling1D(pool_size=2)(dropout(conv_in)))
+    conv_hn = conv_h0
+    rem_timesteps = num_timesteps / 2
+    while rem_timesteps % 2 == 0:
+        conv_hn = Conv1D(num_hidden_dimensions, kernel_size=2, activation='tanh', padding='causal')(AveragePooling1D(pool_size=2)(dropout(conv_hn)))
+        rem_timesteps /= 2
+    lstm = LSTM(num_hidden_dimensions, activation='tanh', return_sequences=False)(conv_hn)
     dense_out = Dense(1, activation='sigmoid')(dropout(lstm))
     decoder = Model(inputs=inputs, outputs=dense_out)
     decoder.compile(loss='binary_crossentropy', optimizer=config['decoder_optimizer'], metrics=['accuracy'])

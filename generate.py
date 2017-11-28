@@ -23,7 +23,7 @@ def generate_from_data(model, x_data, max_seq_len, seed_len=1, gen_count=1, incl
     for i in xrange(gen_count):
         print("Generating sample {0}/{1}".format(i+1, gen_count))
         seed_seq = seed_generator.generate_copy_seed_sequence(seed_length=seed_len, training_data=x_data)
-        output = sequence_generator.generate_from_seed(model, seed_seq, max_seq_len, include_raw_seed, include_model_seed, uncenter_data, X_var, X_mean)
+        output = sequence_generator.generate_from_example_seed(model, seed_seq, max_seq_len, include_raw_seed, include_model_seed, uncenter_data, X_var, X_mean)
         outputs.append(output)
     model.reset_states() # If model is stateful, states should be reset
     print('Finished generation!')
@@ -36,9 +36,9 @@ def generate_from_seeds(model, x_seeds, max_seq_len, batch_size=None, uncenter_d
     return np.array(outputs)
     
 def __main__():
-    config = nn_config.get_neural_net_configuration()
     parser = argparse.ArgumentParser(description="Generate song from current saved training data.")
     parser.add_argument("dataset", default='train', type=str, help='The dataset to draw from. Defaults to "train".')
+    parser.add_argument("-m", "--model", default='aegan', type=str, help="Model type to use. Defaults to 'aegan' (autoencoder GAN). Can also be dgan (deconvolutional GAN) or 'lstm' for vanilla LSTM model.")
     parser.add_argument("--batch", default=1, type=int, help="Number of generations to run.")
     parser.add_argument("--iteration", default=0, type=int, help="Current training iteration load weights for.")
     parser.add_argument("--seqlen", default=10, type=int, help="Generated sequence length.")
@@ -46,6 +46,15 @@ def __main__():
     parser.add_argument("--output", default='new', type=str, help="Either 'new' (default) for only new generated output, 'gen' to also include the model's reproduction of the seed, or 'all' to also include the raw seed sequence.")
     parser.add_argument("-r", "--run", default=0, type=int, help="Integer id for this run (used for weight files). Defaults to zero.")
     args = parser.parse_args()
+    
+    if args.model == 'aegan':
+        config = nn_config.get_autoencoder_gan_configuration()
+    elif args.model == 'dgan':
+        config = nn_config_get_deconv_gan_configuration()
+    elif args.model == 'lstm':
+        config = nn_config.get_default_configuration()
+    else:
+        raise(Exception('invalid model type'))
 
     sample_frequency = config['sampling_frequency']
     input_file = config['dataset_directory'] + args.dataset + '/' + args.dataset

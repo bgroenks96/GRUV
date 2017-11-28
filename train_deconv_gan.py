@@ -11,7 +11,7 @@ import gen_utils.sequence_generator as sequence_generator
 import tensorflow as tf
 import argparse
 
-config = nn_config.get_neural_net_configuration()
+config = nn_config.get_deconv_gan_configuration()
 
 parser = argparse.ArgumentParser(description="Train the NuGRUV GAN against the current dataset.")
 parser.add_argument("dataset_name", help="Name of the dataset to use for training.")
