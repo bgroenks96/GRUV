@@ -38,7 +38,7 @@ def generate_from_seeds(model, x_seeds, max_seq_len, batch_size=None, uncenter_d
 def __main__():
     parser = argparse.ArgumentParser(description="Generate song from current saved training data.")
     parser.add_argument("dataset", default='train', type=str, help='The dataset to draw from. Defaults to "train".')
-    parser.add_argument("-m", "--model", default='aegan', type=str, help="Model type to use. Defaults to 'aegan' (autoencoder GAN). Can also be dgan (deconvolutional GAN) or 'lstm' for vanilla LSTM model.")
+    parser.add_argument("-m", "--model", default='aegan', type=str, help="Model type to use. Defaults to 'aegan' (autoencoder GAN). Can also be dgan (deconvolutional GAN) or 'gruv' for vanilla GRUV model.")
     parser.add_argument("--batch", default=1, type=int, help="Number of generations to run.")
     parser.add_argument("--iteration", default=0, type=int, help="Current training iteration load weights for.")
     parser.add_argument("--seqlen", default=10, type=int, help="Generated sequence length.")
@@ -51,7 +51,7 @@ def __main__():
         config = nn_config.get_autoencoder_gan_configuration()
     elif args.model == 'dgan':
         config = nn_config.get_deconv_gan_configuration()
-    elif args.model == 'lstm':
+    elif args.model == 'gruv':
         config = nn_config.get_default_configuration()
     else:
         raise(Exception('invalid model type'))
@@ -91,7 +91,7 @@ def __main__():
         model = network_utils.create_autoencoding_generator_network(num_frequency_dimensions=freq_space_dims, num_timesteps=num_timesteps, config=config)
     elif args.model == 'dgan':
         model = network_utils.create_deconvolutional_generator_network(256, 1, freq_space_dims, num_timesteps, config, stateful=True)
-    elif args.model == 'lstm':
+    elif args.model == 'gruv':
         model = network_utils.create_lstm_network(freq_space_dims, config['generator_hidden_dims'])
     else:
         raise(Exception('invalid model type'))

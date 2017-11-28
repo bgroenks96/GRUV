@@ -7,23 +7,24 @@ import config.nn_config as nn_config
 import tensorflow as tf
 import argparse
 
+config = nn_config.get_default_configuration()
+
 parser = argparse.ArgumentParser(description="Train the NuGRUV generator network against the current dataset.")
 parser.add_argument("dataset_name", help="Name of the dataset to use for training.")
-parser.add_argument("-s", "--start-tr", default=0, type=int, help="Current training iteration to start from.")
-parser.add_argument("-n", "--num-itrs", default=10, type=int, help='Number of training iterations to run.')
+parser.add_argument("-m", "--model", default='gruv', type=str, help="Generator model to use. Valid values are 'gruv' and 'aegan' (generator only). Defaults to 'gruv'")
+parser.add_argument("-s", "--start-iter", default=0, type=int, help="Current training iteration to start from.")
+parser.add_argument("-n", "--num-iters", default=10, type=int, help='Number of training iterations to run.')
 parser.add_argument("-e", "--epochs", default=25, type=int, help="Number of epochs per iteration.")
 parser.add_argument("-b", "--max-batch", default=500, type=int, help="Maximum number of training examples to batch per gradient update.")
 parser.add_argument("-v", "--validation", default=True, type=bool, help="Use cross validation data.")
 parser.add_argument("-i", "--interval", default=5, type=int, help="Number of iterations to run in between retaining saved weights.")
-parser.add_argument("-o", "--optimizer", default="rmsprop", type=str, help="Name of the optimizer to use for the generative model. Defaults to 'rmsprop'")
-parser.add_argument("-d", "--dropout", default=0.3, type=float, help="Probability of dropout applied to the first layer of the generative network.")
 parser.add_argument("--skip-validation", action="store_true", help="Do not use cross validation data.")
 args = parser.parse_args()
 
 sess = tf.Session(config=tf.ConfigProto(log_device_placement=True))
 
 input_file = config['dataset_directory'] + args.dataset_name + '/' + args.dataset_name
-cur_iter = args.current_iteration
+cur_iter = args.start_iter
 model_basename = config['model_basename']
 model_filename = model_basename + str(cur_iter)
 skip_validation = args.skip_validation
@@ -44,11 +45,18 @@ num_timesteps = X_train.shape[1]
 freq_space_dims = X_train.shape[2]
 hidden_dims = config['generator_hidden_dims']
 
+num_iters = cur_iter + args.num_iters 		#Number of iterations for training
+epochs_per_iter = args.epochs	                #Number of iterations before we save our model
+batch_size = X_train.shape[0]
+while batch_size > args.max_batch:
+    batch_size = int(np.ceil(batch_size / 2.0))
+
 #Creates a lstm network
 print('Initializing network...')
-model = network_utils.create_lstm_network(num_frequency_dimensions=freq_space_dims, num_hidden_dimensions=hidden_dims)
-#You could also substitute this with a RNN or GRU
-#model = network_utils.create_gru_network()
+if args.model == 'gruv':
+    model = network_utils.create_lstm_network(num_frequency_dimensions=freq_space_dims, num_hidden_dimensions=hidden_dims)
+elif args.model == 'aegan':
+    model = network_utils.create_autoencoding_generator_network(freq_space_dims, num_timesteps, config, batch_size=batch_size)
 
 print('Model summary:')
 model.summary()
@@ -57,12 +65,6 @@ model.summary()
 if os.path.isfile(model_filename):
     print ('Loading existing weight data from {}'.format(model_filename))
     model.load_weights(model_filename)
-
-num_iters = cur_iter + args.num_iterations 		#Number of iterations for training
-epochs_per_iter = args.epochs	                #Number of iterations before we save our model
-batch_size = X_train.shape[0]
-while batch_size > args.max_batch:
-    batch_size = int(np.ceil(batch_size / 2.0))
 
 # Deprecated, dynamic validation splitting. Incurs a lot of additional computational overhead per training recurrent_units
 # ...
