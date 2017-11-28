@@ -1,7 +1,7 @@
 import numpy as np
 
-# Extrapolates from a given seed sequence.
-def generate_from_seed(model, seed, max_seq_len, include_raw_seed=False, include_model_seed=False, uncenter_data=False, data_variance=[], data_mean=[]):
+# Extrapolates from a given seed sequence drawn from a training data set.
+def generate_from_example_seed(model, seed, max_seq_len, include_raw_seed=False, include_model_seed=False, uncenter_data=False, data_variance=[], data_mean=[]):
     assert seed.shape[0] == 1
     #print "seed.shape[1] = %d" % seed.shape[1]
     #print "seed.shape[2] = %d" % seed.shape[2]
@@ -47,24 +47,38 @@ def generate_from_seed(model, seed, max_seq_len, include_raw_seed=False, include
             output[i] += data_mean
             
     return output
+
+# Generation algorithm for generative model that feeds 'seed' to the model repeatedly until the output sequence is
+# of length 'max_seq_len'.
+def generate_from_random_seed(model, seeds, max_seq_len, batch_size=None, uncenter_data=False, target_variance=[], target_mean=[]):
+    print(seeds.shape)
+    assert seeds.shape[1] == 1
+    out_dims = 0
+    outputs = np.zeros((seeds.shape[0],0,out_dims))
+    seq_len = 0
+    # Start from our random seed and generate new sequences until the output length is equal to max_seq_len.
+    # This algorithm assumes that the given model is stateful; we feed the same seed in each time.
+    while seq_len < max_seq_len:
+        next_seq = model.predict(seeds, batch_size=batch_size)
+        if out_dims == 0:
+            # Auto detect model output dimensions
+            out_dims = next_seq.shape[2]
+            outputs = outputs.reshape((outputs.shape[0],0,out_dims))
+        outputs = np.concatenate((outputs, next_seq), axis=1)
+        seq_len += next_seq.shape[1]
     
+    if seq_len > max_seq_len:
+        # Clamp output length to max_seq_len
+        outputs = outputs[:,0:max_seq_len,:]
+    if uncenter_data:
+        assert len(target_variance) > 0
+        assert len(target_mean) > 0
+        for i in xrange(len(outputs)):
+            outputs[i] *= target_variance
+            outputs[i] += target_mean
+            
+    return outputs
+        
+        
+        
 
-    #print(seedSeq.shape)
-    #for it in xrange(sequence_length):
-        #seedSeqNew = model.predict(seedSeq) #Step 1. Generate X_n + 1
-        ##Step 2. Append it to the sequence
-        #for i in xrange(seedSeqNew.shape[1]):
-            #output.append(seedSeqNew[-1][i].copy())
-        ##newSeq = seedSeqNew[0][seedSeqNew.shape[1]-1]
-        ##newSeq = np.reshape(newSeq, (1, 1, newSeq.shape[0]))
-        #newSeq = seedSeqNew[-1][np.newaxis,:]
-        ##seedSeq = np.concatenate((seedSeq, newSeq), axis=0)
-        #seedSeq = newSeq
-        #print(seedSeq.shape)
-
-    ##Finally, post-process the generated sequence so that we have valid frequencies
-    ##We're essentially just undo-ing the data centering process
-    #for i in xrange(len(output)):
-        #output[i] *= data_variance
-        #output[i] += data_mean
-    #return output
