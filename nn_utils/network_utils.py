@@ -7,18 +7,10 @@ import numpy as np
 # Prototype gneerator network that deconvolves a frequency domain signal with 'num_frequency_dimensions' and 'num_timesteps'
 # from a random seed of size 'seed_size'.
 def create_deconvolutional_generator_network(seed_size, batch_size, num_frequency_dimensions, num_timesteps, config, stateful=True):
-    assert num_timesteps % 4 == 0
-    inputs = Input(batch_shape=(batch_size, 1, seed_size))
     num_hidden_dimensions = config['generator_hidden_dims']
-    upsample_2x = UpSampling1D(size=2)
-    conv_in = Conv1D(num_hidden_dimensions, kernel_size=2, padding='causal')(upsample_2x(inputs))
-    lstm_1 = LSTM(num_hidden_dimensions, stateful=stateful, return_sequences=True)(conv_in)
-    conv_h1 = Conv1D(num_hidden_dimensions, kernel_size=2, padding='causal')(upsample_2x(inputs))
-    lstm_2 = LSTM(num_hidden_dimensions, stateful=stateful, return_sequences=True)(conv_h1)
-    conv_h2 = Conv1D(num_hidden_dimensions, kernel_size=2, padding='causal')(UpSampling1D(size=num_timesteps/4)(lstm_2))
-    lstm_3 = LSTM(num_hidden_dimensions, stateful=stateful, return_sequences=True)(conv_h2)
-    td_dense_h1 = TimeDistributed(Dense(num_hidden_dimensions))(lstm_3)
-    conv_out = Conv1D(num_frequency_dimensions, kernel_size=2, padding='causal')(td_dense_h1)
+    inputs = Input(batch_shape=(batch_size, 1, seed_size))
+    conv_in = Conv1D(num_hidden_dimensions, kernel_size=2, padding='causal')(UpSampling1D(size=num_timesteps)(inputs))
+    conv_out = Conv1D(num_frequency_dimensions, kernel_size=2, padding='causal')(conv_in)
     model = Model(inputs=inputs, outputs=conv_out)
     model.compile(loss='logcosh', optimizer=config['generator_optimizer'])
     return model
@@ -38,22 +30,15 @@ def create_autoencoding_generator_network(num_frequency_dimensions, num_timestep
     model.compile(loss='mean_squared_error', optimizer=config['generator_optimizer'])
     return model
 
-# Convolutional decoder network for GAN. Convolves the input signal through multiple 1D layers before squashing
-# into a single score for how 'real' or 'fake' the signal looks. The number of timesteps must be even.
+# Simple decoder that applies TDD and then flattens the time dimensions before computing the probability
+# of the sample being real or fake.
 def create_decoder_network(num_frequency_dimensions, num_timesteps, config, batch_size=None):
     num_hidden_dimensions = config['decoder_hidden_dims']
-    assert num_timesteps % 2 == 0
     dropout = GaussianDropout(['decoder_dropout'])
     inputs = Input(batch_shape=(batch_size, num_timesteps, num_frequency_dimensions))
-    conv_in = Conv1D(num_hidden_dimensions, kernel_size=2, activation='tanh', padding='causal')(inputs)
-    conv_h0 = Conv1D(num_hidden_dimensions, kernel_size=2, activation='tanh', padding='causal')(AveragePooling1D(pool_size=2)(dropout(conv_in)))
-    conv_hn = conv_h0
-    rem_timesteps = num_timesteps / 2
-    while rem_timesteps % 2 == 0:
-        conv_hn = Conv1D(num_hidden_dimensions, kernel_size=2, activation='tanh', padding='causal')(AveragePooling1D(pool_size=2)(dropout(conv_hn)))
-        rem_timesteps /= 2
-    lstm = LSTM(num_hidden_dimensions, activation='tanh', return_sequences=False)(conv_hn)
-    dense_out = Dense(1, activation='sigmoid')(dropout(lstm))
+    td_dense_h1 = TimeDistributed(Dense(num_hidden_dimensions, activation='relu'))(inputs)
+    td_dense_h2 = TimeDistributed(Dense(num_hidden_dimensions, activation='relu'))(inputs)
+    dense_out = Dense(1, activation='sigmoid')(Flatten()(td_dense_h2))
     decoder = Model(inputs=inputs, outputs=dense_out)
     decoder.compile(loss='binary_crossentropy', optimizer=config['decoder_optimizer'], metrics=['accuracy'])
     return decoder

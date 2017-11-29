@@ -17,8 +17,8 @@ parser = argparse.ArgumentParser(description="Train the NuGRUV GAN against the c
 parser.add_argument("dataset_name", help="Name of the dataset to use for training.")
 parser.add_argument("-s", "--start-iter", default=0, type=int, help="Current training iteration to start from.")
 parser.add_argument("-n", "--num-iters", default=10, type=int, help='Number of training iterations to run.')
-parser.add_argument("--dec-epochs", default=5, type=int, help="Number of epochs per iteration to train the decoder.")
-parser.add_argument("--gen-epochs", default=2, type=int, help="Number of epochs per iteration of the generator.")
+parser.add_argument("--dec-epochs", default=1, type=int, help="Number of epochs per iteration to train the decoder.")
+parser.add_argument("--gen-epochs", default=1, type=int, help="Number of epochs per iteration of the generator.")
 #parser.add_argument("--com-epochs", default=1, type=int, help="Number of epochs per iteration to train the combined GAN model.")
 parser.add_argument("--dec-samples", default=10, type=int, help="Number of samples to generate for the decoder to train against on each iteration.")
 parser.add_argument("-b", "--batch-size", default=8, type=int, help="Number of seeds to generate per epoch.")
@@ -126,14 +126,17 @@ def train_decoder(X_train, X_val, callbacks=[]):
     print('Training decoder...')
     train_seeds = generate_random_seeds(seed_dims=(batch_size, 1, args.seed_dims))
     val_seeds = generate_random_seeds(seed_dims=(batch_size, 1, args.seed_dims))
-    print(train_seeds.shape)
-    print(val_seeds.shape)
     X_train_real, X_val_real = random_training_examples(X_train, X_val, seed_len=1, train_count=batch_size, val_count=batch_size)
     X_train_fake = generate_from_seeds(gan.generator, train_seeds, max_seq_len=num_timesteps, batch_size=batch_size, uncenter_data=False)
     X_val_fake = generate_from_seeds(gan.generator, val_seeds, max_seq_len=num_timesteps, batch_size=batch_size, uncenter_data=False)
-    print(X_train_real.shape)
-    print(X_train_fake.shape)
-    dec_hist = gan.fit_decoder(X_train_real, X_train_fake, batch_size=batch_size, epochs=args.dec_epochs, shuffle=False, verbose=1, callbacks=callbacks, validation_data=(X_val_real, X_val_fake))
+    return gan.fit_decoder(X_train_real, X_train_fake, batch_size=batch_size, epochs=args.dec_epochs, shuffle=False, verbose=1, callbacks=callbacks, validation_data=(X_val_real, X_val_fake))
+    
+def print_hist_stats(h):
+    loss = h.history['loss']
+    print('loss min: {0}  loss max: {1}'.format(min(loss), max(loss)))
+    if 'acc' in h.history:
+        acc = h.history['acc']
+        print('acc min: {0}  acc max: {1}'.format(min(acc), max(acc)))
     
 reset_states = LambdaCallback(on_epoch_end=lambda epoch,logs: gan.generator.reset_states())
 early_stop = EarlyStopping(monitor='acc', min_delta=0.01, patience=2, verbose=1, mode='auto')
@@ -144,6 +147,7 @@ print('Starting training...')
 if cur_iter > 0:
     cur_iter += 1
 num_iters = cur_iter + args.num_iters
+hist = {}
 while cur_iter < num_iters:
     # Start training iteration for each model
     print('Iteration: {0}'.format(cur_iter))
@@ -157,13 +161,18 @@ while cur_iter < num_iters:
     #gan.generator.save_weights(gen_basename + str(cur_iter))
     print('Training decoder for {0} epochs'.format(args.dec_epochs))
     dec_hist = train_decoder(X_train, X_val, callbacks=[])
+    print_hist_stats(dec_hist)
     print('Saving decoder weights for iteration {0} ...'.format(cur_iter))
     gan.decoder.save_weights(dec_basename + str(cur_iter))
     print('Training combined model for {0} epochs'.format(args.gen_epochs))
-    gan.fit(train_seeds, batch_size=batch_size, epochs=args.gen_epochs, shuffle=False, verbose=1, validation_x=val_seeds)
+    gan_hist = gan.fit(train_seeds, batch_size=batch_size, epochs=args.gen_epochs, shuffle=False, verbose=1, validation_x=val_seeds)
+    print_hist_stats(gan_hist)
     print('Saving generator weights (post-train) for iteration {0} ...'.format(cur_iter))
     gan.generator.save_weights(gen_basename + str(cur_iter))
     gan.generator.reset_states()
+    
+    hist[cur_iter] = {'gan' : gan_hist.history, 'dec' : dec_hist.history}
+    np.save('metrics-run{0}.npy'.format(args.run), hist)
     
     # Clean weights from last iteration, if between persistent save intervals
     last_iter = cur_iter - 1
