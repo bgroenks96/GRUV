@@ -8,9 +8,11 @@ import numpy as np
 # from a random seed of size 'seed_size'.
 def create_deconvolutional_generator_network(seed_size, batch_size, num_frequency_dimensions, num_timesteps, config, stateful=True):
     num_hidden_dimensions = config['generator_hidden_dims']
-    inputs = Input(batch_shape=(batch_size, 1, seed_size))
-    conv_in = Conv1D(num_hidden_dimensions, kernel_size=2, padding='causal')(UpSampling1D(size=num_timesteps)(inputs))
-    conv_out = Conv1D(num_frequency_dimensions, kernel_size=2, padding='causal')(conv_in)
+    inputs = Input(batch_shape=(batch_size, seed_size))
+    dense_in = Dense(num_hidden_dimensions*num_timesteps, activation='relu')(inputs)
+    conv_h1 = Conv1D(num_hidden_dimensions, kernel_size=2, activation='relu', padding='causal')(Reshape((num_timesteps, num_hidden_dimensions))(dense_in))
+    lstm = LSTM(num_hidden_dimensions, return_sequences=True, activation='relu')(conv_h1)
+    conv_out = Conv1D(num_frequency_dimensions, kernel_size=2, padding='causal')(lstm)
     model = Model(inputs=inputs, outputs=conv_out)
     model.compile(loss='logcosh', optimizer=config['generator_optimizer'])
     return model

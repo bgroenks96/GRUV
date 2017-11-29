@@ -52,9 +52,8 @@ def generate_from_example_seed(model, seed, max_seq_len, include_raw_seed=False,
 # of length 'max_seq_len'.
 def generate_from_random_seed(model, seeds, max_seq_len, batch_size=None, uncenter_data=False, target_variance=[], target_mean=[]):
     print(seeds.shape)
-    assert seeds.shape[1] == 1
     out_dims = 0
-    outputs = np.zeros((seeds.shape[0],0,out_dims))
+    outputs = np.zeros((seeds.shape[0], 0, out_dims))
     seq_len = 0
     # Start from our random seed and generate new sequences until the output length is equal to max_seq_len.
     # This algorithm assumes that the given model is stateful; we feed the same seed in each time.

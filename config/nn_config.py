@@ -20,7 +20,7 @@ def get_autoencoder_gan_configuration():
     nn_params['generator_optimizer'] = 'adam'
     nn_params['decoder_dropout'] = 0.3
     nn_params['decoder_optimizer'] = 'adam'
-    nn_params['decoder_hidden_dims'] = 512
+    nn_params['decoder_hidden_dims'] = 64
     nn_params['combined_optimizer'] = 'adam'
     #The weights filename for saving/loading trained models
     nn_params['model_basename'] = './NuGruvModelWeights'
@@ -35,9 +35,9 @@ def get_deconv_gan_configuration():
     nn_params['generator_dropout'] = 0.2
     nn_params['generator_optimizer'] = 'adam'
     nn_params['decoder_dropout'] = 0.3
-    nn_params['decoder_optimizer'] = optimizers.SGD(0.01, momentum=0.1, decay=0.01)
-    nn_params['decoder_hidden_dims'] = 8
-    nn_params['combined_optimizer'] = optimizers.Adadelta(lr=0.05)
+    nn_params['decoder_optimizer'] = optimizers.SGD(0.01, momentum=0.1)
+    nn_params['decoder_hidden_dims'] = 16
+    nn_params['combined_optimizer'] = optimizers.Adamax(0.0015)
     #The weights filename for saving/loading trained models
     nn_params['model_basename'] = './NuGruvModelWeights'
     #The training data directory

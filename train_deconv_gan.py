@@ -124,8 +124,8 @@ def random_training_examples(X_train, X_val=[], seed_len=1, train_count=1, val_c
 
 def train_decoder(X_train, X_val, callbacks=[]):
     print('Training decoder...')
-    train_seeds = generate_random_seeds(seed_dims=(batch_size, 1, args.seed_dims))
-    val_seeds = generate_random_seeds(seed_dims=(batch_size, 1, args.seed_dims))
+    train_seeds = generate_random_seeds(seed_dims=(batch_size, args.seed_dims))
+    val_seeds = generate_random_seeds(seed_dims=(batch_size, args.seed_dims))
     X_train_real, X_val_real = random_training_examples(X_train, X_val, seed_len=1, train_count=batch_size, val_count=batch_size)
     X_train_fake = generate_from_seeds(gan.generator, train_seeds, max_seq_len=num_timesteps, batch_size=batch_size, uncenter_data=False)
     X_val_fake = generate_from_seeds(gan.generator, val_seeds, max_seq_len=num_timesteps, batch_size=batch_size, uncenter_data=False)
@@ -151,10 +151,10 @@ hist = {}
 while cur_iter < num_iters:
     # Start training iteration for each model
     print('Iteration: {0}'.format(cur_iter))
-    train_seeds = generate_random_seeds(seed_dims=(batch_size, 1, args.seed_dims))
+    train_seeds = generate_random_seeds(seed_dims=(batch_size, args.seed_dims))
     val_seeds = None
     if not args.skip_validation:
-        val_seeds = generate_random_seeds(seed_dims=(batch_size, 1, args.seed_dims))
+        val_seeds = generate_random_seeds(seed_dims=(batch_size, args.seed_dims))
     #print('Training generator for {0} epochs (batch size: {1})'.format(args.gen_epochs, batch_size))
     #gen_hist = gan.fit_generator(X_train, y_train, batch_size=batch_size, epochs=args.gen_epochs, shuffle=True, verbose=1, validation_data=val_data)
     #print('Saving generator weights (pre-train) for iteration {0} ...'.format(cur_iter))
