@@ -127,24 +127,24 @@ class GAN:
         num_real = X_real.shape[0]
         num_fake = X_fake.shape[0]
         X_train = np.concatenate((X_real, X_fake), axis=0)
-        y_train = np.concatenate((np.ones((num_real, 1)), np.zeros((num_fake, 1))), axis=0)
+        y_train = np.concatenate((np.ones(num_real), np.zeros(num_fake)))
         val_data = None
         if len(validation_data) > 0:
             val_real = validation_data[0]
             val_fake = validation_data[1]
-            X_val = np.concatenate((val_real, val_fake), axis=0)
-            y_val = np.concatenate((np.ones((val_real.shape[0], 1)), np.zeros((val_fake.shape[0], 1))), axis=0)
+            X_val = np.concatenate((val_real, val_fake))
+            y_val = np.concatenate((np.ones(val_real.shape[0]), np.zeros(val_fake.shape[0])))
             val_data = (X_val, y_val)
         return self.decoder.fit(X_train, y_train, batch_size=batch_size, epochs=epochs, shuffle=shuffle, verbose=verbose, callbacks=callbacks, validation_data=val_data)
 
     def fit(self, X_train, batch_size=None, epochs=10, shuffle=False, verbose=1, callbacks=None, validation_x=[]):
         num_examples = X_train.shape[0]
         num_timesteps = X_train.shape[1]
-        y_train = np.ones((num_examples, 1))
+        y_train = np.ones(num_examples)
         val_data = None
         if len(validation_x) > 0:
             num_val = validation_x.shape[0]
-            y_val = np.ones((num_val, 1))
+            y_val = np.ones(num_val)
             val_data = (validation_x, y_val)
         self.decoder.trainable = False
         hist = self.model.fit(X_train, y_train, batch_size=batch_size, epochs=epochs, shuffle=shuffle, verbose=verbose, callbacks=callbacks, validation_data=val_data)
