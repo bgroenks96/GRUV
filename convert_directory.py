@@ -22,7 +22,7 @@ if not args.skip_conv:
 else:
     new_directory = input_directory + 'wave' + '/'
 
-output_filename = args.name
+output_filename = '{0}/{1}/{2}'.format('datasets', args.name, args.name)
 
 #Step 2 - convert WAVs to frequency domain with mean 0 and standard deviation of 1
 convert_wav_files_to_nptensor(new_directory, block_size, max_seq_len, output_filename, validation_split=args.validation)
