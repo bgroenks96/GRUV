@@ -18,6 +18,7 @@ parser.add_argument("-e", "--epochs", default=25, type=int, help="Number of epoc
 parser.add_argument("-b", "--max-batch", default=500, type=int, help="Maximum number of training examples to batch per gradient update.")
 parser.add_argument("-v", "--validation", default=True, type=bool, help="Use cross validation data.")
 parser.add_argument("-i", "--interval", default=5, type=int, help="Number of iterations to run in between retaining saved weights.")
+parser.add_argument("-r", "--run", default=0, type=int, help="Run id for this training session. Defaults to 0")
 parser.add_argument("--skip-validation", action="store_true", help="Do not use cross validation data.")
 args = parser.parse_args()
 
@@ -26,7 +27,7 @@ sess = tf.Session(config=tf.ConfigProto(log_device_placement=True))
 input_file = config['dataset_directory'] + args.dataset_name + '/' + args.dataset_name
 cur_iter = args.start_iter
 model_basename = config['model_basename']
-model_filename = model_basename + str(cur_iter)
+model_filename = '{0}{1}_{2}'.format(model_basename, str(args.run), str(cur_iter))
 skip_validation = args.skip_validation
 
 #Load up the training data
