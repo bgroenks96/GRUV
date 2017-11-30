@@ -132,6 +132,13 @@ def train_decoder(X_train, X_val, sample_size, callbacks=None):
     X_val_fake = generate_from_data(gan.generator, X_val, max_seq_len=num_timesteps_val, gen_count=X_val_real.shape[0], include_raw_seed=False, include_model_seed=False, uncenter_data=False)
     dec_hist = gan.fit_decoder(X_train_real, X_train_fake, epochs=args.dec_epochs, shuffle=True, verbose=1, callbacks=callbacks, validation_data=(X_val_real, X_val_fake))
 
+def print_hist_stats(h):
+    loss = h.history['loss']
+    print('loss min: {0}  loss max: {1}'.format(min(loss), max(loss)))
+    if 'acc' in h.history:
+        acc = h.history['acc']
+        print('acc min: {0}  acc max: {1}'.format(min(acc), max(acc)))
+
 early_stop = EarlyStopping(monitor='acc', min_delta=0.01, patience=1, verbose=1, mode='max')
 
 print('Starting training...')
@@ -140,21 +147,28 @@ decoder_data_len = min(args.dec_samples, X_train.shape[0])
 if cur_iter > 0:
     cur_iter += 1
 num_iters = cur_iter + args.num_iters
+hist = {}
 while cur_iter < num_iters:
     # Start training iteration for each model
     print('Iteration: {0}'.format(cur_iter))
     print('Training generator for {0} epochs (batch size: {1})'.format(args.gen_epochs, batch_size))
     gen_hist = gan.fit_generator(X_train, y_train, batch_size=batch_size, epochs=args.gen_epochs, shuffle=True, verbose=1, validation_data=val_data)
+    print_hist_stats(gen_hist)
     print('Saving generator weights (pre-train) for iteration {0} ...'.format(cur_iter))
     gan.generator.save_weights(gen_basename + str(cur_iter))
     print('Training decoder for {0} epochs with {1} training examples'.format(args.dec_epochs, decoder_data_len))
     dec_hist = train_decoder(X_train, X_val, decoder_data_len, callbacks=[early_stop])
+    print_hist_stats(dec_hist)
     print('Saving decoder weights for iteration {0} ...'.format(cur_iter))
     gan.decoder.save_weights(dec_basename + str(cur_iter))
     print('Training combined model for {0} epochs'.format(args.com_epochs))
-    gan.fit(X_train, batch_size=batch_size, epochs=args.com_epochs, shuffle=True, verbose=1, callbacks=[early_stop], validation_x=X_val)
+    gan_hist = gan.fit(X_train, batch_size=batch_size, epochs=args.com_epochs, shuffle=True, verbose=1, callbacks=[early_stop], validation_x=X_val)
+    print_hist_stats(gan_hist)
     print('Saving generator weights (post-train) for iteration {0} ...'.format(cur_iter))
     gan.generator.save_weights(gen_basename + str(cur_iter))
+    
+    hist[cur_iter] = {'gen' : gen_hist.history, 'dec' : dec_hist.history, 'com' : gan_hist.history}
+    np.save('metrics-train-aegan-{0}.npy'.format(args.run), hist)
 
     # Clean weights from last iteration, if between persistent save intervals
     last_iter = cur_iter - 1

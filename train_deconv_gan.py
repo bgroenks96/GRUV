@@ -171,8 +171,8 @@ while cur_iter < num_iters:
     gan.generator.save_weights(gen_basename + str(cur_iter))
     gan.generator.reset_states()
     
-    hist[cur_iter] = {'gan' : gan_hist.history, 'dec' : dec_hist.history}
-    np.save('metrics-run{0}.npy'.format(args.run), hist)
+    hist[cur_iter] = {'gen' : gan_hist.history, 'dec' : dec_hist.history}
+    np.save('metrics-train-dgan-{0}.npy'.format(args.run), hist)
     
     # Clean weights from last iteration, if between persistent save intervals
     last_iter = cur_iter - 1

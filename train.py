@@ -26,8 +26,8 @@ sess = tf.Session(config=tf.ConfigProto(log_device_placement=True))
 
 input_file = config['dataset_directory'] + args.dataset_name + '/' + args.dataset_name
 cur_iter = args.start_iter
-model_basename = config['model_basename']
-model_filename = '{0}{1}_{2}'.format(model_basename, str(args.run), str(cur_iter))
+model_basename = config['model_basename'] + args.run
+model_filename = '{0}_{2}'.format(model_basename, str(cur_iter))
 skip_validation = args.skip_validation
 
 #Load up the training data
@@ -98,23 +98,38 @@ val_data = None
 if not skip_validation:
     print('Validation set shape: {0}'.format(X_val.shape))
     val_data = (X_val, y_val)
+    
+def print_hist_stats(h):
+    loss = h.history['loss']
+    print('loss min: {0}  loss max: {1}'.format(min(loss), max(loss)))
+    if 'acc' in h.history:
+        acc = h.history['acc']
+        print('acc min: {0}  acc max: {1}'.format(min(acc), max(acc)))
 
-print ('Starting training!')
-last_interval = 0
+print('Starting training...')
+# If we're not starting at zero, then bump current iteration up one, assuming we've loaded weights for the starting iteration
+if cur_iter > 0:
+    cur_iter += 1
+num_iters = cur_iter + args.num_iters
+hist = {}
 while cur_iter < num_iters:
-    print('Iteration: ' + str(cur_iter))
-    history = model.fit(X_train, y_train, batch_size=batch_size, epochs=epochs_per_iter, shuffle=True, verbose=1, validation_data=val_data)
-    save_metrics = history.history
+    # Start training iteration for each model
+    print('Iteration: {0}'.format(cur_iter))
+    print('Training for {0} epochs (batch size: {1})'.format(args.gen_epochs, batch_size))
+    cur_hist = model.fit(X_train, y_train, batch_size=batch_size, epochs=args.gen_epochs, shuffle=True, verbose=1, validation_data=val_data)
+    print_hist_stats(cur_hist)
+    print('Saving weights for iteration {0} ...'.format(cur_iter))
+    model.save_weights(gen_basename + str(cur_iter))
+    
+    hist[cur_iter] = {'gen' : cur_hist.history}
+    np.save('metrics-train-{0}.npy'.format(args.run), hist)
 
-    if cur_iter - last_interval < args.interval and os.path.isfile(model_basename + str(cur_iter)):
-        os.remove(model_basename + str(cur_iter))
-    else:
-        last_interval = cur_iter
+    # Clean weights from last iteration, if between persistent save intervals
+    last_iter = cur_iter - 1
+    if last_iter >= 0 and last_iter % args.interval != 0:
+        if os.path.isfile(model_basename + str(last_iter)):
+            os.remove(model_basename + str(last_iter))
 
-    cur_iter += epochs_per_iter
-
-    print ('Saving weights for iteration {0} ...'.format(cur_iter))
-    model.save_weights(model_basename + str(cur_iter))
-    np.save('loss_metrics_iteration-%d.npy' % cur_iter, save_metrics)
+    cur_iter += 1
 
 print ('Training complete!')
