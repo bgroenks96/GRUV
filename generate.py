@@ -89,7 +89,7 @@ def __main__():
     #Creates a lstm network
     print('Initializing network...')
     if args.model == 'aegan':
-        model = network_utils.create_autoencoding_generator_network(num_frequency_dimensions=freq_space_dims, config=config, batch_size=1, stateful=True)
+        model = network_utils.create_autoencoding_generator_network(num_frequency_dimensions=freq_space_dims, config=config)
     elif args.model == 'dgan':
         model = network_utils.create_deconvolutional_generator_network(256, 1, freq_space_dims, num_timesteps, config, stateful=True)
     elif args.model == 'gruv':
