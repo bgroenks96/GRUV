@@ -31,7 +31,7 @@ def generate_from_data(model, x_data, max_seq_len, seed_len=1, gen_count=1, incl
     
 def generate_from_seeds(model, x_seeds, max_seq_len, batch_size=None, uncenter_data=False, X_var=None, X_mean=None):
     print('Starting generation!')
-    outputs = sequence_generator.generate_from_random_seed(model, x_seeds, max_seq_len, batch_size=batch_size, uncenter_data=uncenter_data, target_mean=X_mean, target_variance=X_var)
+    outputs = sequence_generator.generate_from_random_seed(model, x_seeds, max_seq_len, batch_size=batch_size, fix_timesteps=True, uncenter_data=uncenter_data, target_mean=X_mean, target_variance=X_var)
     model.reset_states() # If model is stateful, states should be reset
     print('Finished generation!')
     return np.array(outputs)
@@ -89,7 +89,7 @@ def __main__():
     #Creates a lstm network
     print('Initializing network...')
     if args.model == 'aegan':
-        model = network_utils.create_autoencoding_generator_network(num_frequency_dimensions=freq_space_dims, num_timesteps=num_timesteps, config=config, batch_size=1, stateful=True)
+        model = network_utils.create_autoencoding_generator_network(num_frequency_dimensions=freq_space_dims, config=config, batch_size=1, stateful=True)
     elif args.model == 'dgan':
         model = network_utils.create_deconvolutional_generator_network(256, 1, freq_space_dims, num_timesteps, config, stateful=True)
     elif args.model == 'gruv':
@@ -113,7 +113,8 @@ def __main__():
         x_seeds = np.random.uniform(low=-1, high=1, size=(gen_count, 256))
         outputs = generate_from_seeds(model, x_seeds, max_seq_len=seq_len, batch_size=1, uncenter_data=True, X_mean=X_mean, X_var=X_var)
     else:
-        outputs = generate_from_data(model, X_train, seq_len, seed_len=args.seedlen, gen_count=gen_count, include_raw_seed=include_raw_seed, include_model_seed=include_model_seed, uncenter_data=True, X_var=X_var, X_mean=X_mean)
+        outputs = generate_from_data(model, X_train, seq_len, seed_len=args.seedlen, gen_count=gen_count,
+                                     include_raw_seed=include_raw_seed, include_model_seed=include_model_seed, uncenter_data=True, X_var=X_var, X_mean=X_mean)
 
     for i in xrange(gen_count):
         #Save the generated sequence to a WAV file

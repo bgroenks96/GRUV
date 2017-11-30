@@ -1,7 +1,7 @@
 import numpy as np
 
 # Extrapolates from a given seed sequence drawn from a training data set.
-def generate_from_example_seed(model, seed, max_seq_len, include_raw_seed=False, include_model_seed=False, uncenter_data=False, data_variance=[], data_mean=[]):
+def generate_from_example_seed(model, seed, max_seq_len, include_raw_seed=False, include_model_seed=False, fix_timesteps=False, uncenter_data=False, data_variance=[], data_mean=[]):
     assert seed.shape[0] == 1
     #print "seed.shape[1] = %d" % seed.shape[1]
     #print "seed.shape[2] = %d" % seed.shape[2]
@@ -35,7 +35,8 @@ def generate_from_example_seed(model, seed, max_seq_len, include_raw_seed=False,
         newSeq = np.reshape(newSeq, (1, 1, newSeq.shape[0]))
         # newSeq += np.random.randn(*newSeq.shape)*0.01
         seedSeq = np.concatenate((seedSeq, newSeq), axis=1)
-        seedSeq = seedSeq[:,1:,:]
+        if fix_timesteps:
+            seedSeq = seedSeq[:,1:,:]
 
     if uncenter_data:
         assert len(data_variance) > 0

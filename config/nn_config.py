@@ -36,8 +36,8 @@ def get_deconv_gan_configuration():
     nn_params['generator_optimizer'] = 'adam'
     nn_params['decoder_dropout'] = 0.3
     nn_params['decoder_optimizer'] = optimizers.SGD(0.01, momentum=0.1)
-    nn_params['decoder_hidden_dims'] = 16
-    nn_params['combined_optimizer'] = optimizers.Adadelta(0.1)
+    nn_params['decoder_hidden_dims'] = 64
+    nn_params['combined_optimizer'] = optimizers.Adadelta(0.05)
     #The weights filename for saving/loading trained models
     nn_params['model_basename'] = './NuGruvModelWeights'
     #The training data directory

@@ -19,7 +19,7 @@ def create_deconvolutional_generator_network(seed_size, batch_size, num_frequenc
 
 # GAN friendly adaptation of Nayebi et Vitelli's autoencoder concept; replaces TDD input/output layers with
 # 1D convolutional layers and uses two hidden LSTM layers.
-def create_autoencoding_generator_network(num_frequency_dimensions, num_timesteps, config, batch_size=None, stateful=False):
+def create_autoencoding_generator_network(num_frequency_dimensions, config, num_timesteps=None, batch_size=None, stateful=False):
     inputs = Input(batch_shape=(batch_size, num_timesteps, num_frequency_dimensions))
     num_hidden_dimensions = config['generator_hidden_dims']
     dropout = GaussianDropout(config['generator_dropout'])
@@ -38,15 +38,16 @@ def create_decoder_network(num_frequency_dimensions, num_timesteps, config, batc
     num_hidden_dimensions = config['decoder_hidden_dims']
     dropout = GaussianDropout(['decoder_dropout'])
     inputs = Input(batch_shape=(batch_size, num_timesteps, num_frequency_dimensions))
-    td_dense_h1 = TimeDistributed(Dense(num_hidden_dimensions, activation='relu'))(inputs)
-    td_dense_h2 = TimeDistributed(Dense(num_hidden_dimensions, activation='relu'))(inputs)
-    dense_out = Dense(1, activation='sigmoid')(Flatten()(td_dense_h2))
+    conv_in = Conv1D(num_hidden_dimensions, kernel_size=2, activation='relu', padding='causal')(inputs)
+    conv_h1 = Conv1D(num_hidden_dimensions, kernel_size=2, activation='relu', padding='causal')(MaxPooling1D(pool_size=2)(conv_in))
+    conv_h2 = Conv1D(num_hidden_dimensions, kernel_size=2, activation='relu', padding='causal')(MaxPooling1D(pool_size=2)(conv_in))
+    dense_out = Dense(1, activation='sigmoid')(Flatten()(conv_h2))
     decoder = Model(inputs=inputs, outputs=dense_out)
     decoder.compile(loss='binary_crossentropy', optimizer=config['decoder_optimizer'], metrics=['accuracy'])
     return decoder
 
 # Constructs a GAN using the autoencoder generator.
-def create_autoencoder_gan(num_frequency_dimensions, num_timesteps, config, batch_size=None, stateful=False):
+def create_autoencoder_gan(num_frequency_dimensions, config, num_timesteps=None, batch_size=None, stateful=False):
     # Create generator network
     generator = create_autoencoding_generator_network(num_frequency_dimensions, num_timesteps, config, batch_size, stateful)
     # Create decoder (or "discriminator") network
