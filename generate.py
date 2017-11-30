@@ -23,7 +23,7 @@ def generate_from_data(model, x_data, max_seq_len, seed_len=1, gen_count=1, incl
     for i in xrange(gen_count):
         print("Generating sample {0}/{1}".format(i+1, gen_count))
         seed_seq = seed_generator.generate_copy_seed_sequence(seed_length=seed_len, training_data=x_data)
-        output = sequence_generator.generate_from_example_seed(model, seed_seq, max_seq_len, include_raw_seed, include_model_seed, uncenter_data, X_var, X_mean)
+        output = sequence_generator.generate_from_example_seed(model, seed_seq, max_seq_len, include_raw_seed=include_raw_seed, include_model_seed=include_model_seed, uncenter_data=uncenter_data, data_variance=X_var, data_mean=X_mean)
         outputs.append(output)
         model.reset_states() # If model is stateful, states should be reset
     print('Finished generation!')
@@ -31,7 +31,7 @@ def generate_from_data(model, x_data, max_seq_len, seed_len=1, gen_count=1, incl
     
 def generate_from_seeds(model, x_seeds, max_seq_len, batch_size=None, uncenter_data=False, X_var=None, X_mean=None):
     print('Starting generation!')
-    outputs = sequence_generator.generate_from_random_seed(model, x_seeds, max_seq_len, batch_size=batch_size, fix_timesteps=True, uncenter_data=uncenter_data, target_mean=X_mean, target_variance=X_var)
+    outputs = sequence_generator.generate_from_random_seed(model, x_seeds, max_seq_len, batch_size=batch_size, uncenter_data=uncenter_data, target_mean=X_mean, target_variance=X_var)
     model.reset_states() # If model is stateful, states should be reset
     print('Finished generation!')
     return np.array(outputs)
