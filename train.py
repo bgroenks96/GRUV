@@ -115,11 +115,11 @@ hist = {}
 while cur_iter < num_iters:
     # Start training iteration for each model
     print('Iteration: {0}'.format(cur_iter))
-    print('Training for {0} epochs (batch size: {1})'.format(args.gen_epochs, batch_size))
-    cur_hist = model.fit(X_train, y_train, batch_size=batch_size, epochs=args.gen_epochs, shuffle=True, verbose=1, validation_data=val_data)
+    print('Training for {0} epochs (batch size: {1})'.format(args.epochs, batch_size))
+    cur_hist = model.fit(X_train, y_train, batch_size=batch_size, epochs=args.epochs, shuffle=True, verbose=1, validation_data=val_data)
     print_hist_stats(cur_hist)
     print('Saving weights for iteration {0} ...'.format(cur_iter))
-    model.save_weights(gen_basename + str(cur_iter))
+    model.save_weights(model_basename + str(cur_iter))
     
     hist[cur_iter] = {'gen' : cur_hist.history}
     np.save('metrics-train-{0}.npy'.format(args.run), hist)
