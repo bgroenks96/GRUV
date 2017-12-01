@@ -49,7 +49,7 @@ def create_decoder_network(num_frequency_dimensions, num_timesteps, config, batc
 # Constructs a GAN using the autoencoder generator.
 def create_autoencoder_gan(num_frequency_dimensions, config, num_timesteps=None, batch_size=None, stateful=False):
     # Create generator network
-    generator = create_autoencoding_generator_network(num_frequency_dimensions, num_timesteps, config, batch_size, stateful)
+    generator = create_autoencoding_generator_network(num_frequency_dimensions, config, num_timesteps=num_timesteps, batch_size=batch_size, stateful=stateful)
     # Create decoder (or "discriminator") network
     decoder = create_decoder_network(num_frequency_dimensions, num_timesteps, config)
     # Create GAN (combined model)
