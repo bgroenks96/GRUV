@@ -26,7 +26,7 @@ sess = tf.Session(config=tf.ConfigProto(log_device_placement=True))
 
 input_file = config['dataset_directory'] + args.dataset_name + '/' + args.dataset_name
 cur_iter = args.start_iter
-model_basename = config['model_basename'] + args.run
+model_basename = config['model_basename'] + str(args.run)
 model_filename = '{0}_{2}'.format(model_basename, str(cur_iter))
 skip_validation = args.skip_validation
 
