@@ -57,7 +57,7 @@ print('Initializing network...')
 if args.model == 'gruv':
     model = network_utils.create_lstm_network(num_frequency_dimensions=freq_space_dims, num_hidden_dimensions=hidden_dims)
 elif args.model == 'aegan':
-    model = network_utils.create_autoencoding_generator_network(freq_space_dims, num_timesteps, config, batch_size=batch_size)
+    model = network_utils.create_autoencoding_generator_network(freq_space_dims, config, num_timesteps=None, batch_size=batch_size)
 
 print('Model summary:')
 model.summary()
