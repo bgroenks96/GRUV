@@ -3,7 +3,7 @@ from keras import optimizers
 def get_default_configuration():
     nn_params = {}
     nn_params['sampling_frequency'] = 44100
-    nn_params['generator_hidden_dims'] = 128
+    nn_params['generator_hidden_dims'] = 256
     nn_params['generator_dropout'] = 0.2
     nn_params['generator_optimizer'] = 'adam'
     #The weights filename for saving/loading trained models
