@@ -118,7 +118,7 @@ def __main__():
 
     for i in xrange(gen_count):
         #Save the generated sequence to a WAV file
-        save_generated_example('{0}_{1}.wav'.format(output_filename, i), outputs[i], sample_frequency=sample_frequency)
+        save_generated_example('{0}_{1}_{2}.wav'.format(output_filename, args.run, i), outputs[i], sample_frequency=sample_frequency)
         
 if __name__ == '__main__':
     __main__()
