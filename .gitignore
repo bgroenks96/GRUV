@@ -5,4 +5,7 @@ YourMusicLibraryNPWeights*
 NuGruvModelWeights*
 loss_metrics*
 generated_song*
+.idea
+*.npy
+.ropeproject
 

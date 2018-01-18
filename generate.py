@@ -39,7 +39,7 @@ def generate_from_seeds(model, x_seeds, max_seq_len, batch_size=None, uncenter_d
 def __main__():
     parser = argparse.ArgumentParser(description="Generate song from current saved training data.")
     parser.add_argument("dataset", default='train', type=str, help='The dataset to draw from. Defaults to "train".')
-    parser.add_argument("-m", "--model", default='aegan', type=str, help="Model type to use. Defaults to 'aegan' (autoencoder GAN). Can also be dgan (deconvolutional GAN) or 'gruv' for vanilla GRUV model.")
+    parser.add_argument("-m", "--model", default='rgan', type=str, help="Model type to use. Defaults to 'rgan' (regression GAN). Can also be dgan (deconvolutional GAN) or 'gruv' for vanilla GRUV model.")
     parser.add_argument("--batch", default=1, type=int, help="Number of generations to run.")
     parser.add_argument("--iteration", default=0, type=int, help="Current training iteration load weights for.")
     parser.add_argument("--seqlen", default=10, type=int, help="Generated sequence length.")
@@ -48,8 +48,8 @@ def __main__():
     parser.add_argument("-r", "--run", default=0, type=int, help="Integer id for this run (used for weight files). Defaults to zero.")
     args = parser.parse_args()
     
-    if args.model == 'aegan':
-        config = nn_config.get_autoencoder_gan_configuration()
+    if args.model == 'rgan':
+        config = nn_config.get_regression_gan_configuration()
     elif args.model == 'dgan':
         config = nn_config.get_deconv_gan_configuration()
     elif args.model == 'gruv':
@@ -88,8 +88,8 @@ def __main__():
 
     #Creates a lstm network
     print('Initializing network...')
-    if args.model == 'aegan':
-        model = network_utils.create_autoencoding_generator_network(num_frequency_dimensions=freq_space_dims, config=config)
+    if args.model == 'rgan':
+        model = network_utils.create_regression_generator_network(num_frequency_dimensions=freq_space_dims, config=config)
     elif args.model == 'dgan':
         model = network_utils.create_deconvolutional_generator_network(256, 1, freq_space_dims, num_timesteps, config, stateful=True)
     elif args.model == 'gruv':
