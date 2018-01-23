@@ -18,7 +18,7 @@ parser.add_argument("dataset_name", help="Name of the dataset to use for trainin
 parser.add_argument("-s", "--start-iter", default=0, type=int, help="Current training iteration to start from.")
 parser.add_argument("-n", "--num-iters", default=10, type=int, help='Number of training iterations to run.')
 parser.add_argument("--dis-epochs", default=10, type=int, help="Number of epochs per iteration to train the discriminator.")
-parser.add_argument("--gen-epochs", default=5, type=int, help="Number of epochs per iteration of the generator.")
+parser.add_argument("--enc-epochs", default=20, type=int, help="Number of epochs per iteration of the generator.")
 parser.add_argument("--com-epochs", default=1, type=int, help="Number of epochs per iteration to train the combined GAN model.")
 parser.add_argument("--dis-samples", default=10, type=int, help="Number of samples to generate for the discriminator to train against on each iteration.")
 parser.add_argument("-b", "--max-batch", default=32, type=int, help="Maximum number of training examples to batch per gradient update.")
@@ -96,11 +96,11 @@ def random_training_examples(X_train, X_val=[], seed_len=1, count=1):
     val_split = float(num_val_examples) / (num_train_examples + num_val_examples)
     val_count = int(val_split*count);
     train_count = count - val_count;
-    train_examples = np.zeros((0,X_train.shape[1]*seed_len,X_train.shape[2]))
+    train_examples = np.zeros((0, X_train.shape[1]*seed_len,X_train.shape[2]))
     for i in xrange(train_count):
         next_example = seed_generator.generate_copy_seed_sequence(seed_length=seed_len, training_data=X_train)
         train_examples = np.concatenate((train_examples, next_example), axis=0)
-    val_examples = np.zeros((0,X_val.shape[1]*seed_len,X_val.shape[2]))
+    val_examples = np.zeros((0, X_val.shape[1]*seed_len,X_val.shape[2]))
     for i in xrange(val_count):
         next_example = seed_generator.generate_copy_seed_sequence(seed_length=seed_len, training_data=X_val)
         val_examples = np.concatenate((val_examples, next_example), axis=0)
@@ -137,11 +137,13 @@ hist = {}
 while cur_iter < num_iters:
     # Start training iteration for each model
     print('Iteration: {0}'.format(cur_iter))
-    print('Training generator for {0} epochs (batch size: {1})'.format(args.gen_epochs, batch_size))
-    gen_hist = gan.fit_generator(X_train, y_train, batch_size=batch_size, epochs=args.gen_epochs, shuffle=True, verbose=1, validation_data=val_data)
-    print_hist_stats(gen_hist)
-    print('Saving generator weights (pre-train) for iteration {0} ...'.format(cur_iter))
-    gan.generator.save_weights(gen_basename + str(cur_iter))
+    print('Training autoencoder for {0} epochs (batch size: {1})'.format(args.enc_epochs, batch_size))
+    enc_hist = autoencoder.fit(X_train, y_train, batch_size=batch_size, epochs=args.enc_epochs, shuffle=True, verbose=1, validation_data=val_data)
+    print_hist_stats(enc_hist)
+    print('Saving encoder weights for iteration {0} ...'.format(cur_iter))
+    encoder.save_weights(enc_basename + str(cur_iter))
+    print('Saving decoder weights for iteration {0} ...'.format(cur_iter))
+    decoder.save_weights(enc_basename + str(cur_iter))
     print('Training discriminator for {0} epochs with {1} training examples'.format(args.dec_epochs, discriminator_data_len))
     dis_hist = train_discriminator(X_train, X_val, discriminator_data_len, callbacks=[early_stop])
     print_hist_stats(dis_hist)
