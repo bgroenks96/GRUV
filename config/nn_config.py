@@ -17,7 +17,8 @@ def get_autoencoder_gan_configuration():
     nn_params['sampling_frequency'] = 44100
     nn_params['autoencoder_optimizer'] = 'adam'
     nn_params['autoencoder_dropout'] = 0.2
-    nn_params['encoding_hidden_dims'] = 128
+    nn_params['encoding_hidden_dims'] = 256
+    nn_params['generator_seed_size'] = 256
     nn_params['generator_dropout'] = 0.1
     nn_params['generator_optimizer'] = 'adam'
     nn_params['discriminator_dropout'] = 0.3

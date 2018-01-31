@@ -1,6 +1,6 @@
 from __future__ import absolute_import
 from __future__ import print_function
-from generate import generate_from_data
+from generate import generate_from_seeds
 from keras.callbacks import EarlyStopping
 import numpy as np
 import os
@@ -11,17 +11,17 @@ import gen_utils.sequence_generator as sequence_generator
 import tensorflow as tf
 import argparse
 
-config = nn_config.get_regression_gan_configuration()
+config = nn_config.get_autoencoder_gan_configuration()
 
 parser = argparse.ArgumentParser(description="Train the NuGRUV GAN against the current dataset.")
 parser.add_argument("dataset_name", help="Name of the dataset to use for training.")
 parser.add_argument("-s", "--start-iter", default=0, type=int, help="Current training iteration to start from.")
 parser.add_argument("-n", "--num-iters", default=10, type=int, help='Number of training iterations to run.')
 parser.add_argument("--dis-epochs", default=10, type=int, help="Number of epochs per iteration to train the discriminator.")
-parser.add_argument("--enc-epochs", default=20, type=int, help="Number of epochs per iteration of the generator.")
+parser.add_argument("--enc-epochs", default=20, type=int, help="Number of epochs per iteration of the autoencoder.")
 parser.add_argument("--com-epochs", default=1, type=int, help="Number of epochs per iteration to train the combined GAN model.")
 parser.add_argument("--dis-samples", default=10, type=int, help="Number of samples to generate for the discriminator to train against on each iteration.")
-parser.add_argument("-b", "--max-batch", default=32, type=int, help="Maximum number of training examples to batch per gradient update.")
+parser.add_argument("-b", "--batch", default=64, type=int, help="Number of seeds to generate per iteration.")
 parser.add_argument("--skip-validation", action="store_true", help="Do not use cross validation data.")
 parser.add_argument("-i", "--interval", default=10, type=int, help="Number of iterations to run in between retaining saved weights.")
 parser.add_argument("-r", "--run", default=0, type=int, help="Integer id for this run (used for weight files). Defaults to zero.")
@@ -52,21 +52,20 @@ if not skip_validation:
     y_val = X_val
 print('Finished loading training data')
 
-batch_size = X_train.shape[0]
-while batch_size > args.max_batch:
-    batch_size = int(np.ceil(batch_size / 2.0))
-
 # Figure out how many frequencies we have in the data
 num_timesteps = X_train.shape[1]
 freq_space_dims = X_train.shape[2]
+seed_size = config['generator_seed_size']
 
 # Creates an autoencoder and GAN using the decoder from the autoencoder network
 print('Initializing network...')
-encoder = network_utils.create_aegan_encoder_network(freq_space_dims, config, num_timesteps, batch_size, stateful)
-decoder = network_utils.create_aegan_decoder_network(freq_space_dims, config, num_timesteps, batch_size, stateful)
-autoencoder, gan = network_utils.create_autoencoder_gan(encoder, decoder, freq_space_dims, config, num_timesteps, batch_size)
+encoder = network_utils.create_aegan_encoder_network(freq_space_dims, config, num_timesteps)
+decoder = network_utils.create_aegan_decoder_network(freq_space_dims, config, num_timesteps)
+autoencoder, gan = network_utils.create_autoencoder_gan(seed_size, encoder, decoder, freq_space_dims, config, num_timesteps)
 
 print('Model summary:')
+print('==== Autoencoder ====')
+autoencoder.summary()
 gan.summary()
 
 # Load existing weights if available
@@ -89,6 +88,13 @@ if not skip_validation:
     print('Validation set shape: {0}'.format(X_val.shape))
     val_data = (X_val, y_val)
 
+def generate_random_seeds(seed_dims, repeat_count=0, mean=0, std=1):
+    seeds = np.random.uniform(low=-1, high=1, size=seed_dims) #np.random.normal(loc=mean, scale=std, size=seed_dims)
+    #copies = seeds.copy()
+    #for i in xrange(repeat_count - 1):
+    #    copies = np.concatenate((copies, seeds), axis=0)
+    return seeds
+
 def random_training_examples(X_train, X_val=[], seed_len=1, count=1):
     X_val = np.array(X_val)
     num_train_examples = X_train.shape[0]
@@ -106,17 +112,14 @@ def random_training_examples(X_train, X_val=[], seed_len=1, count=1):
         val_examples = np.concatenate((val_examples, next_example), axis=0)
     return (train_examples, val_examples)
 
-def train_discriminator(X_train, X_val, sample_size, callbacks=None):
+def train_discriminator(X_train, X_val, batch_size, callbacks=[]):
     print('Training discriminator...')
-    X_train_real, X_val_real = random_training_examples(X_train, X_val, seed_len=1, count=sample_size)
-    # Generate fake examples from random seeds. To make sure we train the discriminator on the same input it will receive from the generator
-    # in the combined model, we need to cap the sequence length at 'num_timesteps' (note: this means only the model's reproduction of the seed sequence + 1 num_timesteps
-    # will be included in the output; room for further improvement)
-    num_timesteps = X_train_real.shape[1]
-    num_timesteps_val = X_val_real.shape[1]
-    X_train_fake = generate_from_data(gan.generator, X_train, max_seq_len=num_timesteps, gen_count=X_train_real.shape[0], include_raw_seed=False, include_model_seed=False, uncenter_data=False)
-    X_val_fake = generate_from_data(gan.generator, X_val, max_seq_len=num_timesteps_val, gen_count=X_val_real.shape[0], include_raw_seed=False, include_model_seed=False, uncenter_data=False)
-    return gan.fit_discriminator(X_train_real, X_train_fake, epochs=args.dec_epochs, shuffle=True, verbose=1, callbacks=callbacks, validation_data=(X_val_real, X_val_fake))
+    train_seeds = generate_random_seeds(seed_dims=(X_train.shape[0], seed_size))
+    val_seeds = generate_random_seeds(seed_dims=(X_val.shape[0], seed_size))
+    X_train_real, X_val_real = random_training_examples(X_train, X_val, seed_len=1)
+    X_train_fake = generate_from_seeds(gan.generator, train_seeds, max_seq_len=num_timesteps, uncenter_data=False)
+    X_val_fake = generate_from_seeds(gan.generator, val_seeds, max_seq_len=num_timesteps, uncenter_data=False)
+    return gan.fit_discriminator(X_train_real, X_train_fake, batch_size=batch_size, epochs=args.dis_epochs, shuffle=False, verbose=1, callbacks=callbacks, validation_data=(X_val_real, X_val_fake))
 
 def print_hist_stats(h):
     loss = h.history['loss']
@@ -128,7 +131,6 @@ def print_hist_stats(h):
 early_stop = EarlyStopping(monitor='acc', min_delta=0.01, patience=1, verbose=1, mode='max')
 
 print('Starting training...')
-discriminator_data_len = min(args.dec_samples, X_train.shape[0])
 # If we're not starting at zero, then bump current iteration up one, assuming we've loaded weights for the starting iteration
 if cur_iter > 0:
     cur_iter += 1
@@ -137,20 +139,24 @@ hist = {}
 while cur_iter < num_iters:
     # Start training iteration for each model
     print('Iteration: {0}'.format(cur_iter))
-    print('Training autoencoder for {0} epochs (batch size: {1})'.format(args.enc_epochs, batch_size))
-    enc_hist = autoencoder.fit(X_train, y_train, batch_size=batch_size, epochs=args.enc_epochs, shuffle=True, verbose=1, validation_data=val_data)
+    train_seeds = generate_random_seeds(seed_dims=(args.batch, seed_size))
+    val_seeds = None
+    if not args.skip_validation:
+        val_seeds = generate_random_seeds(seed_dims=(args.batch, seed_size))
+    print('Training autoencoder for {0} epochs (batch size: {1})'.format(args.enc_epochs, 'default'))
+    enc_hist = autoencoder.fit(X_train, y_train, epochs=args.enc_epochs, shuffle=True, verbose=1, validation_data=val_data)
     print_hist_stats(enc_hist)
     print('Saving encoder weights for iteration {0} ...'.format(cur_iter))
     encoder.save_weights(enc_basename + str(cur_iter))
     print('Saving decoder weights for iteration {0} ...'.format(cur_iter))
-    decoder.save_weights(enc_basename + str(cur_iter))
-    print('Training discriminator for {0} epochs with {1} training examples'.format(args.dec_epochs, discriminator_data_len))
-    dis_hist = train_discriminator(X_train, X_val, discriminator_data_len, callbacks=[early_stop])
+    decoder.save_weights(dec_basename + str(cur_iter))
+    print('Training discriminator for {0} epochs with {1} training examples'.format(args.dis_epochs, args.batch))
+    dis_hist = train_discriminator(X_train, X_val, args.batch, callbacks=[early_stop])
     print_hist_stats(dis_hist)
     print('Saving discriminator weights for iteration {0} ...'.format(cur_iter))
-    gan.discriminator.save_weights(dec_basename + str(cur_iter))
-    print('Training combined model for {0} epochs'.format(args.com_epochs))
-    gan_hist = gan.fit(X_train, batch_size=batch_size, epochs=args.com_epochs, shuffle=True, verbose=1, callbacks=[early_stop], validation_x=X_val)
+    gan.discriminator.save_weights(dis_basename + str(cur_iter))
+    print('Training generator (combined model) for {0} epochs'.format(args.com_epochs))
+    gan_hist = gan.fit(train_seeds, epochs=args.com_epochs, shuffle=True, verbose=1, callbacks=[early_stop], validation_x=val_seeds)
     print_hist_stats(gan_hist)
     print('Saving generator weights (post-train) for iteration {0} ...'.format(cur_iter))
     gan.generator.save_weights(gen_basename + str(cur_iter))

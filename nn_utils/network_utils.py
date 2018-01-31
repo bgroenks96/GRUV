@@ -1,38 +1,41 @@
 from keras.models import Sequential, Model
 from keras.layers import Input, Conv1D, LSTM, TimeDistributed, Dense
-from keras.layers import GaussianDropout, Lambda, GRU, Reshape
+from keras.layers import GaussianDropout, Lambda, GRU, Reshape, PReLU
 import numpy as np
 
 def create_aegan_encoder_network(num_frequency_dimensions, config, num_timesteps=None, batch_size=None, stateful=False):
     num_hidden_dimensions = config['encoding_hidden_dims']
     dropout = GaussianDropout(config['autoencoder_dropout'])
     inputs = Input(batch_shape=(batch_size, num_timesteps, num_frequency_dimensions))
-    conv_in = Conv1D(num_hidden_dimensions, kernel_size=2, padding='causal')(inputs)
-    lstm = LSTM(num_hidden_dimensions, return_sequences=True, stateful=stateful)(dropout(conv_in))
-    td_dense = TimeDistributed(Dense(num_hidden_dimensions))(lstm)
-    model = Model(inputs=inputs, outputs=td_dense)
+    conv_in = Conv1D(num_hidden_dimensions, kernel_size=2, activation='tanh', padding='causal')(inputs)
+    td_dense = TimeDistributed(Dense(num_hidden_dimensions, activation='tanh'))(dropout(conv_in))
+    lstm = LSTM(num_hidden_dimensions, return_sequences=True, activation='tanh', stateful=stateful)(dropout(td_dense))
+    model = Model(inputs=inputs, outputs=lstm)
     return model
 
 def create_aegan_decoder_network(num_frequency_dimensions, config, num_timesteps=None, batch_size=None, stateful=False):
     num_hidden_dimensions = config['encoding_hidden_dims']
     dropout = GaussianDropout(config['autoencoder_dropout'])
     inputs = Input(batch_shape=(batch_size, num_timesteps, num_hidden_dimensions))
-    td_dense = TimeDistributed(Dense(num_hidden_dimensions))(inputs)
-    lstm = LSTM(num_hidden_dimensions, return_sequences=True, stateful=stateful)(dropout(td_dense))
-    conv_out = Conv1D(num_frequency_dimensions, kernel_size=2, padding='causal')(dropout(lstm))
+    #dense_in = Dense(num_hidden_dimensions, activation='tanh')(inputs)
+    #reshaped = Reshape((num_timesteps, num_hidden_dimensions))(dense_in)
+    td_dense = TimeDistributed(Dense(num_hidden_dimensions, activation='tanh'))(dropout(inputs))
+    conv_out = Conv1D(num_frequency_dimensions, kernel_size=2, padding='causal')(dropout(td_dense))
     model = Model(inputs=inputs, outputs=conv_out)
     return model
 
-def create_aegan_generator_network(decoder, num_frequency_dimensions, config, num_timesteps, batch_size=None, stateful=False):
+def create_aegan_generator_network(seed_size, decoder, config, num_timesteps, batch_size=None, stateful=False):
     num_hidden_dimensions = config['encoding_hidden_dims']
     dropout = GaussianDropout(config['generator_dropout'])
     inputs = Input(batch_shape=(batch_size, seed_size))
-    dense_in = Dense(num_hidden_dimensions*num_timesteps, activation='prelu')(inputs)
-    reshaped = Reshape(num_timesteps, num_hidden_dimensions)(dropout(dense_in))
-    lstm = LSTM(num_hidden_dimensions, return_sequences=True, activation='prelu', stateful=stateful)(dropout(reshaped))
-    conv_out = Conv1D(num_hidden_dimensions, kernel_size=2, activation='prelu', padding='causal')(dropout(lstm))
-    gen_model = Model(inputs=inputs, outputs=conv_out)
-    aegan_model = Model(inputs=gen_model, ouputs=decoder)
+    dense_in = Dense(num_hidden_dimensions*num_timesteps, activation='tanh')(inputs)
+    reshaped = Reshape((num_timesteps, num_hidden_dimensions))(dropout(dense_in))
+    dense_h1 = TimeDistributed(Dense(num_hidden_dimensions, activation='tanh'))(dropout(reshaped))
+    dense_out = TimeDistributed(Dense(num_hidden_dimensions, activation='tanh'))(dense_h1)
+    gen_model = Model(inputs=inputs, outputs=dense_out)
+    aegan_model = Sequential()
+    aegan_model.add(gen_model)
+    aegan_model.add(decoder)
     return aegan_model
 
 # Prototype gneerator network that deconvolves a frequency domain signal with 'num_frequency_dimensions' and 'num_timesteps'
@@ -78,11 +81,13 @@ def create_discriminator_network(num_frequency_dimensions, num_timesteps, config
     discriminator.compile(loss='binary_crossentropy', optimizer=config['discriminator_optimizer'], metrics=['accuracy'])
     return discriminator
 
-def create_autoencoder_gan(encoder, decoder, num_frequency_dimensions, config, num_timesteps, batch_size=None, stateful=False):
+def create_autoencoder_gan(seed_size, encoder, decoder, num_frequency_dimensions, config, num_timesteps, batch_size=None, stateful=False):
     # Create full autoencoder network
-    autoencoder = Model(inputs=encoder, outputs=decoder)
+    autoencoder = Sequential()
+    autoencoder.add(encoder)
+    autoencoder.add(decoder)
     # Create generator network
-    generator = create_aegan_generator_network(decoder, num_frequency_dimensions, config, num_timesteps=num_timesteps, batch_size=batch_size, stateful=stateful)
+    generator = create_aegan_generator_network(seed_size, decoder, config, num_timesteps=num_timesteps, batch_size=batch_size, stateful=stateful)
     # Create discriminator network
     discriminator = create_discriminator_network(num_frequency_dimensions, num_timesteps, config)
     # Create GAN (combined model)
