@@ -1,3 +1,15 @@
+# NuGRUV
+
+NuGRUV is an experimental extension of GRUV (see original README below) that attempts to incorporate GAN
+(Generative Adversarial Network) models.
+
+The only change in dependencies from the original GRUV specification is that the project has been updated to use the
+latest version of Keras. NuGRUV also makes extensive use of Keras's new functional API in lieu of the older sequential
+API used by GRUV.
+
+Please note that NuGRUV is intended for experimentation and research only. It has not been thoroughly tested or reviewed
+for production use.
+
 # GRUV
 GRUV is a Python project for algorithmic music generation using recurrent neural networks.
 
